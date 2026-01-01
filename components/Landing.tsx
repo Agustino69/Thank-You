@@ -13,7 +13,7 @@ const Landing: React.FC<LandingProps> = ({ onUnlock }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowHint(true);
-    }, 30000); // 30 seconds
+    }, 10000); // 10 seconds
 
     return () => clearTimeout(timer);
   }, []);

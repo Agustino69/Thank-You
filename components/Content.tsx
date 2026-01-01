@@ -212,7 +212,7 @@ const Content: React.FC<ContentProps> = ({ person, onExit }) => {
              </motion.div>
              
              <footer className="mt-20 opacity-40 font-serif italic text-sm">
-                Con aprecio.
+                Con aprecio, Agus.
              </footer>
           </section>
         )}
