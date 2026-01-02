@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useFavicon } from '../hooks/useFavicon';
 
 interface LandingProps {
   onUnlock: (code: string) => void;
@@ -25,6 +26,9 @@ const Landing: React.FC<LandingProps> = ({
   const [hintRevealed, setHintRevealed] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Set Favicon to dark zinc for Landing
+  useFavicon('#27272a');
 
   // Focus input on click anywhere, unless unlocking
   useEffect(() => {

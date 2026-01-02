@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { motion, Variants, AnimatePresence } from 'framer-motion';
 import { Person } from '../types';
 import { Play, Music, ChevronDown, X } from 'lucide-react';
+import { useFavicon } from '../hooks/useFavicon';
 
 interface ContentProps {
   person: Person;
@@ -20,6 +21,9 @@ const Content: React.FC<ContentProps> = ({ person, onExit }) => {
   // Theme Color
   const themeColor = person.themeColor || '#4A463E';
   
+  // Set the favicon to match the theme color
+  useFavicon(themeColor);
+
   // Create RGB string for transparent backgrounds
   const themeRgb = useMemo(() => hexToRgb(themeColor), [themeColor]);
 

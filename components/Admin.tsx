@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Person, EasterEgg } from '../types';
 import { Plus, Trash2, Save, X, Copy, Check, HelpCircle, Code, Volume2, Gamepad2 } from 'lucide-react';
+import { useFavicon } from '../hooks/useFavicon';
 
 // Simple ID generator replacement
 const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -16,6 +17,9 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, onSave, onClose }) => {
   const [selectedId, setSelectedId] = useState<string | null>(people[0]?.id || null);
   const [hasCopied, setHasCopied] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
+
+  // Set favicon for Admin panel
+  useFavicon('#000000');
 
   // Form states
   const selectedPerson = people.find(p => p.id === selectedId);
