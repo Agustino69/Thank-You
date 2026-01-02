@@ -20,8 +20,9 @@ export const INITIAL_PEOPLE: Person[] = [
     bgmUrl: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3', // Example LoFi
     bgmVolume: 0.3,
     easterEggs: [
-      { code: 'help', response: 'NO HELP AVAILABLE. FIGURE IT OUT.' },
-      { code: 'love', response: 'ERROR 404: EMOTION NOT FOUND IN KERNEL.' }
+      { code: 'help', type: 'text', response: 'NO HELP AVAILABLE. FIGURE IT OUT.' },
+      { code: 'love', type: 'text', response: 'ERROR 404: EMOTION NOT FOUND IN KERNEL.' },
+      { code: '2026', type: 'countdown', response: 'NEW YEAR', date: '2026-01-01T00:00:00' }
     ]
   }
 ];

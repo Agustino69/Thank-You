@@ -3,7 +3,7 @@ import { AnimatePresence } from 'framer-motion';
 import Landing from './components/Landing';
 import Content from './components/Content';
 import Admin from './components/Admin';
-import { Person, ViewState } from './types';
+import { Person, ViewState, EasterEgg } from './types';
 import { ADMIN_CODE } from './constants';
 import { getPeople, savePeople } from './services/storageService';
 
@@ -13,7 +13,8 @@ const App: React.FC = () => {
   const [activePerson, setActivePerson] = useState<Person | null>(null);
   
   const [loginError, setLoginError] = useState(false);
-  const [systemMessage, setSystemMessage] = useState<string | undefined>(undefined);
+  // Replaced simple systemMessage string with activeEasterEgg object for more complex interactions
+  const [activeEasterEgg, setActiveEasterEgg] = useState<EasterEgg | null>(null);
   
   // New state for transition animation
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -23,7 +24,7 @@ const App: React.FC = () => {
   }, []);
 
   const handleUnlock = (code: string) => {
-    setSystemMessage(undefined);
+    setActiveEasterEgg(null);
     setLoginError(false);
 
     // Check for admin code
@@ -34,15 +35,27 @@ const App: React.FC = () => {
     }
 
     // 1. Check for Easter Eggs first (Global search across all profiles)
-    let foundEgg = false;
-    people.forEach(p => {
-        const egg = p.easterEggs?.find(e => e.code.toLowerCase() === code.toLowerCase());
-        if (egg) {
-            setSystemMessage(egg.response);
-            foundEgg = true;
+    let foundEgg: EasterEgg | undefined;
+    
+    // Iterate through all people to find a matching egg
+    for (const p of people) {
+        if (p.easterEggs) {
+            const egg = p.easterEggs.find(e => e.code.toLowerCase() === code.toLowerCase());
+            if (egg) {
+                foundEgg = egg;
+                break;
+            }
         }
-    });
-    if (foundEgg) return;
+    }
+
+    if (foundEgg) {
+        // Normalize egg for backward compatibility (ensure type exists)
+        setActiveEasterEgg({
+            ...foundEgg,
+            type: foundEgg.type || 'text'
+        });
+        return;
+    }
 
     // 2. Check for User Access
     const person = people.find(p => 
@@ -76,7 +89,7 @@ const App: React.FC = () => {
   const handleExitContent = () => {
     setActivePerson(null);
     setView('LANDING');
-    setSystemMessage(undefined);
+    setActiveEasterEgg(null);
   };
 
   return (
@@ -89,8 +102,8 @@ const App: React.FC = () => {
             isUnlocking={isTransitioning}
             onTransitionComplete={handleTransitionComplete}
             error={loginError}
-            systemMessage={systemMessage}
-            onClearError={() => { setLoginError(false); setSystemMessage(undefined); }}
+            activeEasterEgg={activeEasterEgg}
+            onClearError={() => { setLoginError(false); setActiveEasterEgg(null); }}
             transitionColor={activePerson?.themeColor}
           />
         )}

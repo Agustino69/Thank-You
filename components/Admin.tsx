@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Person, EasterEgg } from '../types';
-import { Plus, Trash2, Save, X, Copy, Check, HelpCircle, Code, Volume2, Gamepad2 } from 'lucide-react';
+import { Person, EasterEgg, EasterEggType } from '../types';
+import { Plus, Trash2, Save, X, Copy, Check, HelpCircle, Code, Volume2, Gamepad2, Calendar, Clock } from 'lucide-react';
 import { useFavicon } from '../hooks/useFavicon';
 
 // Simple ID generator replacement
@@ -36,10 +36,10 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, onSave, onClose }) => {
   const handleAddEgg = () => {
     if (!selectedPerson) return;
     const currentEggs = selectedPerson.easterEggs || [];
-    handleUpdate('easterEggs', [...currentEggs, { code: '', response: '' }]);
+    handleUpdate('easterEggs', [...currentEggs, { code: '', type: 'text', response: '' }]);
   };
 
-  const handleUpdateEgg = (index: number, field: keyof EasterEgg, value: string) => {
+  const handleUpdateEgg = (index: number, field: keyof EasterEgg, value: any) => {
     if (!selectedPerson || !selectedPerson.easterEggs) return;
     const newEggs = [...selectedPerson.easterEggs];
     newEggs[index] = { ...newEggs[index], [field]: value };
@@ -333,39 +333,69 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, onSave, onClose }) => {
                 </div>
               </div>
 
-              {/* Easter Eggs (NEW) */}
+              {/* Easter Eggs */}
               <div className="border-t pt-6">
                   <h4 className="text-xs font-bold uppercase text-gray-600 mb-3 flex items-center gap-2">
-                    <Gamepad2 size={16} /> Easter Eggs (Respuestas Secretas)
+                    <Gamepad2 size={16} /> Easter Eggs (Secretos)
                   </h4>
                   <div className="space-y-3">
                       {(selectedPerson.easterEggs || []).map((egg, idx) => (
-                          <div key={idx} className="flex gap-2 items-start bg-gray-50 p-2 rounded">
-                              <input 
-                                  type="text"
-                                  placeholder="Código (ej: hola)"
-                                  value={egg.code}
-                                  onChange={(e) => handleUpdateEgg(idx, 'code', e.target.value)}
-                                  className="w-1/3 p-2 border border-gray-300 rounded text-sm"
-                              />
-                              <input 
-                                  type="text"
-                                  placeholder="Respuesta de terminal"
-                                  value={egg.response}
-                                  onChange={(e) => handleUpdateEgg(idx, 'response', e.target.value)}
-                                  className="flex-1 p-2 border border-gray-300 rounded text-sm font-mono text-xs"
-                              />
-                              <button 
-                                onClick={() => handleDeleteEgg(idx)}
-                                className="p-2 text-gray-400 hover:text-red-500"
-                              >
-                                  <Trash2 size={16} />
-                              </button>
+                          <div key={idx} className="flex flex-col gap-2 bg-gray-50 p-3 rounded border border-gray-200">
+                             <div className="flex gap-2 items-start">
+                                {/* Code Input */}
+                                <input 
+                                    type="text"
+                                    placeholder="Código (ej: hola)"
+                                    value={egg.code}
+                                    onChange={(e) => handleUpdateEgg(idx, 'code', e.target.value)}
+                                    className="w-1/4 p-2 border border-gray-300 rounded text-sm"
+                                />
+
+                                {/* Type Selector */}
+                                <select
+                                    value={egg.type || 'text'}
+                                    onChange={(e) => handleUpdateEgg(idx, 'type', e.target.value as EasterEggType)}
+                                    className="w-1/4 p-2 border border-gray-300 rounded text-sm bg-white"
+                                >
+                                    <option value="text">Texto</option>
+                                    <option value="countdown">Conteo</option>
+                                </select>
+                                
+                                {/* Response / Title Input */}
+                                <input 
+                                    type="text"
+                                    placeholder={egg.type === 'countdown' ? "Nombre del Evento" : "Respuesta de terminal"}
+                                    value={egg.response}
+                                    onChange={(e) => handleUpdateEgg(idx, 'response', e.target.value)}
+                                    className="flex-1 p-2 border border-gray-300 rounded text-sm font-mono text-xs"
+                                />
+
+                                <button 
+                                    onClick={() => handleDeleteEgg(idx)}
+                                    className="p-2 text-gray-400 hover:text-red-500"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                             </div>
+
+                             {/* Extra fields for Countdown */}
+                             {egg.type === 'countdown' && (
+                                 <div className="flex items-center gap-2 pl-1">
+                                    <Calendar size={14} className="text-gray-400" />
+                                    <span className="text-xs text-gray-500">Fecha Objetivo:</span>
+                                    <input 
+                                        type="datetime-local"
+                                        value={egg.date || ''}
+                                        onChange={(e) => handleUpdateEgg(idx, 'date', e.target.value)}
+                                        className="p-1 border border-gray-300 rounded text-xs"
+                                    />
+                                 </div>
+                             )}
                           </div>
                       ))}
                       <button 
                         onClick={handleAddEgg}
-                        className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 font-bold"
+                        className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 font-bold mt-2"
                       >
                           <Plus size={14} /> Añadir Secreto
                       </button>

@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFavicon } from '../hooks/useFavicon';
+import { EasterEgg } from '../types';
 
 interface LandingProps {
   onUnlock: (code: string) => void;
   isUnlocking: boolean;
   onTransitionComplete: () => void;
   error?: boolean;
-  systemMessage?: string;
+  activeEasterEgg?: EasterEgg | null; // Changed from systemMessage string to full object
   onClearError?: () => void;
   transitionColor?: string;
 }
@@ -17,14 +18,18 @@ const Landing: React.FC<LandingProps> = ({
   isUnlocking, 
   onTransitionComplete, 
   error = false, 
-  systemMessage,
+  activeEasterEgg,
   onClearError,
-  transitionColor = '#F9F7F0' // Default warm color if undefined
+  transitionColor = '#F9F7F0' 
 }) => {
   const [input, setInput] = useState('');
   const [showHintButton, setShowHintButton] = useState(false);
   const [hintRevealed, setHintRevealed] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
+  
+  // Timer state for countdowns
+  const [timeLeft, setTimeLeft] = useState<string>('');
+  
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Set Favicon to dark zinc for Landing
@@ -46,6 +51,32 @@ const Landing: React.FC<LandingProps> = ({
     return () => clearTimeout(timer);
   }, []);
 
+  // Handle Countdown Logic
+  useEffect(() => {
+    if (!activeEasterEgg || activeEasterEgg.type !== 'countdown' || !activeEasterEgg.date) return;
+
+    const interval = setInterval(() => {
+        const now = new Date().getTime();
+        const target = new Date(activeEasterEgg.date!).getTime();
+        const diff = target - now;
+        
+        const isPast = diff < 0;
+        const absDiff = Math.abs(diff);
+
+        const days = Math.floor(absDiff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((absDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((absDiff % (1000 * 60)) / 1000);
+
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        const prefix = isPast ? 'T-PLUS' : 'T-MINUS';
+        
+        setTimeLeft(`${prefix} [${pad(days)}:${pad(hours)}:${pad(minutes)}:${pad(seconds)}]`);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [activeEasterEgg]);
+
   // Handle the success animation sequence
   useEffect(() => {
     if (isUnlocking) {
@@ -57,8 +88,7 @@ const Landing: React.FC<LandingProps> = ({
         setLogs(prev => [...prev, '> LOADING MEMORY FRAGMENTS...']);
         await new Promise(r => setTimeout(r, 500));
         setLogs(prev => [...prev, '> RENDERING...']);
-        await new Promise(r => setTimeout(r, 800)); // Slightly longer for the fade feel
-        // Signal parent to switch view
+        await new Promise(r => setTimeout(r, 800)); 
         onTransitionComplete();
       };
       sequence();
@@ -74,7 +104,7 @@ const Landing: React.FC<LandingProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);
-    if ((error || systemMessage) && onClearError) {
+    if ((error || activeEasterEgg) && onClearError) {
       onClearError();
     }
   };
@@ -83,7 +113,7 @@ const Landing: React.FC<LandingProps> = ({
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0, transition: { duration: 1.5 } }} // Slower exit for smoother feel
+      exit={{ opacity: 0, transition: { duration: 1.5 } }} 
       className="min-h-screen bg-black flex flex-col items-center justify-center text-zinc-400 font-mono text-sm selection:bg-zinc-800 selection:text-zinc-200 relative overflow-hidden"
     >
       {/* FADE OVERLAY TRANSITION */}
@@ -172,15 +202,22 @@ const Landing: React.FC<LandingProps> = ({
                         ERR: ACCESS_DENIED // INVALID_KEY
                     </motion.div>
                     )}
-                    {systemMessage && (
+                    {activeEasterEgg && (
                     <motion.div
                         key="sys"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="text-amber-600 text-xs"
+                        className="text-amber-600 text-xs flex flex-col gap-1"
                     >
-                        {`> SYSTEM_RESPONSE: "${systemMessage}"`}
+                        {activeEasterEgg.type === 'countdown' ? (
+                            <>
+                                <span className="uppercase tracking-widest">{`> TARGET: "${activeEasterEgg.response}"`}</span>
+                                <span className="text-zinc-100 font-bold tracking-widest">{timeLeft}</span>
+                            </>
+                        ) : (
+                            <span>{`> SYSTEM_RESPONSE: "${activeEasterEgg.response}"`}</span>
+                        )}
                     </motion.div>
                     )}
                 </AnimatePresence>
