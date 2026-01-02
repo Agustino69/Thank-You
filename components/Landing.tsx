@@ -171,10 +171,10 @@ const Landing: React.FC<LandingProps> = ({
                     onChange={handleInputChange}
                     autoComplete="off"
                     autoFocus
-                    className="w-full bg-transparent border-none outline-none text-zinc-200 placeholder-transparent p-0 uppercase tracking-widest caret-transparent text-base md:text-sm"
+                    className="w-full bg-transparent border-none outline-none text-transparent placeholder-transparent p-0 uppercase tracking-widest caret-transparent text-base md:text-sm"
                     />
                     {/* Custom Block Cursor implementation */}
-                    <span className="absolute inset-0 pointer-events-none text-zinc-200 tracking-widest uppercase flex items-center">
+                    <span className="absolute inset-0 pointer-events-none text-zinc-200 tracking-widest uppercase flex items-center text-base md:text-sm">
                     {input}
                     <motion.span 
                         animate={{ opacity: [1, 1, 0, 0] }}
