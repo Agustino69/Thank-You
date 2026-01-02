@@ -1,27 +1,77 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, HelpCircle } from 'lucide-react';
 
 interface LandingProps {
   onUnlock: (code: string) => void;
+  isUnlocking: boolean;
+  onTransitionComplete: () => void;
+  error?: boolean;
+  systemMessage?: string;
+  onClearError?: () => void;
+  transitionColor?: string;
 }
 
-const Landing: React.FC<LandingProps> = ({ onUnlock }) => {
+const Landing: React.FC<LandingProps> = ({ 
+  onUnlock, 
+  isUnlocking, 
+  onTransitionComplete, 
+  error = false, 
+  systemMessage,
+  onClearError,
+  transitionColor = '#F9F7F0' // Default warm color if undefined
+}) => {
   const [input, setInput] = useState('');
-  const [showHint, setShowHint] = useState(false);
+  const [showHintButton, setShowHintButton] = useState(false);
+  const [hintRevealed, setHintRevealed] = useState(false);
+  const [logs, setLogs] = useState<string[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Focus input on click anywhere, unless unlocking
+  useEffect(() => {
+    const handleClick = () => {
+      if (!isUnlocking) inputRef.current?.focus();
+    };
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [isUnlocking]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setShowHint(true);
-    }, 10000); // 10 seconds
-
+      setShowHintButton(true);
+    }, 8000); 
     return () => clearTimeout(timer);
   }, []);
 
+  // Handle the success animation sequence
+  useEffect(() => {
+    if (isUnlocking) {
+      const sequence = async () => {
+        setLogs(prev => [...prev, '> ACCESS GRANTED']);
+        await new Promise(r => setTimeout(r, 400));
+        setLogs(prev => [...prev, '> DECRYPTING ARCHIVE...']);
+        await new Promise(r => setTimeout(r, 600));
+        setLogs(prev => [...prev, '> LOADING MEMORY FRAGMENTS...']);
+        await new Promise(r => setTimeout(r, 500));
+        setLogs(prev => [...prev, '> RENDERING...']);
+        await new Promise(r => setTimeout(r, 800)); // Slightly longer for the fade feel
+        // Signal parent to switch view
+        onTransitionComplete();
+      };
+      sequence();
+    }
+  }, [isUnlocking, onTransitionComplete]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim()) {
+    if (input.trim() && !isUnlocking) {
       onUnlock(input.trim().toLowerCase());
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInput(e.target.value);
+    if ((error || systemMessage) && onClearError) {
+      onClearError();
     }
   };
 
@@ -29,62 +79,148 @@ const Landing: React.FC<LandingProps> = ({ onUnlock }) => {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0, transition: { duration: 0.8, ease: "easeInOut" } }}
-      className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center text-zinc-300 relative overflow-hidden"
+      exit={{ opacity: 0, transition: { duration: 1.5 } }} // Slower exit for smoother feel
+      className="min-h-screen bg-black flex flex-col items-center justify-center text-zinc-400 font-mono text-sm selection:bg-zinc-800 selection:text-zinc-200 relative overflow-hidden"
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-900 via-zinc-950 to-zinc-950 opacity-50 pointer-events-none" />
+      {/* FADE OVERLAY TRANSITION */}
+      <AnimatePresence>
+        {isUnlocking && logs.length >= 4 && (
+            <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 1.2, ease: "easeInOut" }}
+                className="absolute inset-0 z-50 pointer-events-none"
+                style={{ backgroundColor: transitionColor }}
+            />
+        )}
+      </AnimatePresence>
 
-      <form onSubmit={handleSubmit} className="w-full max-w-md px-8 relative z-10 flex flex-col items-center">
-        <label htmlFor="code" className="sr-only">Introduce tu nombre</label>
+      <div className="w-full max-w-lg px-6 flex flex-col gap-6 relative z-10">
         
-        <div className="relative w-full group">
-          <input
-            id="code"
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder=""
-            autoComplete="off"
-            autoFocus
-            className="w-full bg-transparent border-b border-zinc-800 text-center py-4 text-xl tracking-widest font-serif placeholder-zinc-800 text-zinc-100 focus:outline-none focus:border-zinc-500 transition-colors duration-500"
-          />
-          
-          <button 
-            type="submit"
-            className={`absolute right-0 top-1/2 -translate-y-1/2 p-2 text-zinc-600 hover:text-zinc-200 transition-all duration-500 ${input ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-          >
-            <ArrowRight size={20} strokeWidth={1} />
-          </button>
+        {/* Header / System Status */}
+        <div className="flex flex-col gap-1 opacity-50 text-xs mb-8">
+          <p>ARCHIVE_SYS v.1.0.4</p>
+          <p>STATUS: {isUnlocking ? 'UNLOCKING...' : 'LOCKED'}</p>
+          <p>.....................</p>
         </div>
-        
-        <AnimatePresence>
-          {showHint && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="mt-8"
-            >
-              <div className="flex items-center gap-2 text-zinc-600 text-xs tracking-wider border border-zinc-800 rounded-full px-4 py-1.5 bg-zinc-900/50">
-                <HelpCircle size={12} />
-                <span>¿Cómo te llamas?</span>
-              </div>
-            </motion.div>
+
+        {/* Unlocking Logs View */}
+        {isUnlocking ? (
+            <div className="flex flex-col gap-2 h-32 justify-end pb-2">
+                {logs.map((log, idx) => (
+                    <motion.div
+                        key={idx}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="text-zinc-100 text-xs uppercase tracking-wider"
+                    >
+                        {log}
+                    </motion.div>
+                ))}
+            </div>
+        ) : (
+            /* Standard Input View */
+            <form onSubmit={handleSubmit} className="relative w-full">
+            <label htmlFor="cmd" className="sr-only">Input Code</label>
+            
+            <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-3">
+                <span className="text-zinc-600 select-none">{'>'}</span>
+                <div className="relative flex-1">
+                    <input
+                    ref={inputRef}
+                    id="cmd"
+                    type="text"
+                    value={input}
+                    onChange={handleInputChange}
+                    autoComplete="off"
+                    autoFocus
+                    className="w-full bg-transparent border-none outline-none text-zinc-200 placeholder-transparent p-0 uppercase tracking-widest caret-transparent"
+                    />
+                    {/* Custom Block Cursor implementation */}
+                    <span className="absolute inset-0 pointer-events-none text-zinc-200 tracking-widest uppercase">
+                    {input}
+                    <motion.span 
+                        animate={{ opacity: [1, 1, 0, 0] }}
+                        transition={{ 
+                          repeat: Infinity, 
+                          duration: 0.8, 
+                          ease: "linear",
+                          times: [0, 0.5, 0.5, 1]
+                        }}
+                        className="inline-block w-2.5 h-4 bg-zinc-500 align-middle ml-1"
+                    />
+                    </span>
+                </div>
+                </div>
+
+                {/* Error Message or System Message */}
+                <div className="h-6 pl-6">
+                <AnimatePresence mode="wait">
+                    {error && (
+                    <motion.div
+                        key="error"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="text-red-800 text-xs"
+                    >
+                        ERR: ACCESS_DENIED // INVALID_KEY
+                    </motion.div>
+                    )}
+                    {systemMessage && (
+                    <motion.div
+                        key="sys"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="text-amber-600 text-xs"
+                    >
+                        {`> SYSTEM_RESPONSE: "${systemMessage}"`}
+                    </motion.div>
+                    )}
+                </AnimatePresence>
+                </div>
+            </div>
+            </form>
+        )}
+
+        {/* Footer / Hint */}
+        <div className="mt-12 flex flex-col items-start gap-4 h-12">
+          {!isUnlocking && (
+             <AnimatePresence>
+             {showHintButton && (
+               <motion.div
+                 initial={{ opacity: 0 }}
+                 animate={{ opacity: 1 }}
+                 exit={{ opacity: 0 }}
+                 className="text-xs"
+               >
+                 {!hintRevealed ? (
+                   <button
+                     type="button"
+                     onClick={() => setHintRevealed(true)}
+                     className="text-zinc-700 hover:text-zinc-400 hover:bg-zinc-900 transition-colors px-1 -ml-1"
+                   >
+                     [ --hint ]
+                   </button>
+                 ) : (
+                   <div className="flex flex-col gap-1 text-zinc-600">
+                     <span>{'>'} EXECUTE_HINT_PROTOCOL</span>
+                     <span className="text-zinc-300">OUTPUT: "IDENTIDAD"</span>
+                   </div>
+                 )}
+               </motion.div>
+             )}
+           </AnimatePresence>
           )}
-        </AnimatePresence>
+        </div>
 
-      </form>
+      </div>
 
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.3 }}
-        transition={{ delay: 1, duration: 1 }}
-        className="absolute bottom-10 left-0 w-full text-center pointer-events-none"
-      >
-        <span className="text-[10px] tracking-[0.3em] uppercase text-zinc-600 font-sans">
-          Agus 2025-2026
-        </span>
-      </motion.div>
+      <div className="absolute bottom-6 left-6 text-[10px] text-zinc-800 uppercase tracking-widest">
+        Agus_Archive_2025.sys
+      </div>
     </motion.div>
   );
 };

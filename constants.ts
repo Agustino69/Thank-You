@@ -14,6 +14,14 @@ export const INITIAL_PEOPLE: Person[] = [
       'https://picsum.photos/500/700'
     ],
     videoUrl: 'https://www.youtube.com/watch?v=LXb3EKWsInQ',
-    themeColor: '#4A463E'
+    spotifyUrl: 'https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC',
+    spotifyMessage: 'Esta canción suena a como se siente una tarde tranquila de domingo. Me recuerda a nuestra paz.',
+    themeColor: '#4A463E',
+    bgmUrl: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3', // Example LoFi
+    bgmVolume: 0.3,
+    easterEggs: [
+      { code: 'help', response: 'NO HELP AVAILABLE. FIGURE IT OUT.' },
+      { code: 'love', response: 'ERROR 404: EMOTION NOT FOUND IN KERNEL.' }
+    ]
   }
 ];

@@ -1,5 +1,5 @@
 {
-  "name": "gratitude-archive",
+  "name": "agus-archive",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -11,9 +11,9 @@
   "dependencies": {
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "lucide-react": "^0.562.0",
-    "framer-motion": "^12.23.26",
-    "uuid": "^13.0.0"
+    "lucide-react": "0.263.1",
+    "framer-motion": "10.16.4",
+    "uuid": "9.0.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
