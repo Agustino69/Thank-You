@@ -17,7 +17,7 @@ const hexToRgb = (hex: string) => {
         : '74, 70, 62'; // Fallback
 };
 
-// Helper to detect Google Photos links
+// Helper to detect Google Photos links (Must remain external due to CORS/Security)
 const isGooglePhotosLink = (url: string) => {
   return url.includes('photos.app.goo.gl') || url.includes('photos.google.com');
 };
@@ -25,6 +25,12 @@ const isGooglePhotosLink = (url: string) => {
 // Helper to detect Google Drive links
 const isGoogleDriveLink = (url: string) => {
   return url.includes('drive.google.com');
+};
+
+// Extract File ID from Google Drive URL
+const getGoogleDriveId = (url: string) => {
+  const matches = url.match(/\/d\/(.+?)(\/|$)/) || url.match(/id=(.+?)(\&|$)/);
+  return matches ? matches[1] : null;
 };
 
 const Content: React.FC<ContentProps> = ({ person, onExit }) => {
@@ -75,7 +81,6 @@ const Content: React.FC<ContentProps> = ({ person, onExit }) => {
 
     // If Spotify is open OR we are in video section, pause BGM
     if (isPlayerOpen || activeSection === 'video') {
-       // Fade out effect could go here, but pause is immediate for now
        audio.pause();
     } else {
        playAudio();
@@ -121,7 +126,9 @@ const Content: React.FC<ContentProps> = ({ person, onExit }) => {
 
   const isYoutube = person.videoUrl?.includes('youtube.com') || person.videoUrl?.includes('youtu.be');
   const isGooglePhotosVideo = person.videoUrl ? isGooglePhotosLink(person.videoUrl) : false;
-  const isGoogleDriveVideo = person.videoUrl ? isGoogleDriveLink(person.videoUrl) : false;
+  // We treat Drive as embeddable if we can extract an ID
+  const driveVideoId = person.videoUrl && isGoogleDriveLink(person.videoUrl) ? getGoogleDriveId(person.videoUrl) : null;
+  const isDriveVideo = !!driveVideoId;
 
   const getYoutubeId = (url: string) => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -259,8 +266,12 @@ const Content: React.FC<ContentProps> = ({ person, onExit }) => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {person.images.map((img, idx) => {
                     const isGPhotos = isGooglePhotosLink(img);
-                    const isGDrive = isGoogleDriveLink(img);
-                    const isExternalLink = isGPhotos || isGDrive;
+                    // Check if Drive and valid ID found for embedding
+                    const driveId = isGoogleDriveLink(img) ? getGoogleDriveId(img) : null;
+                    const canEmbedDrive = !!driveId;
+                    
+                    // It is an external link only if it is Google Photos OR (Drive AND no ID found/Folder)
+                    const isExternalLink = isGPhotos || (isGoogleDriveLink(img) && !canEmbedDrive);
                     
                     return (
                       <motion.div 
@@ -279,22 +290,24 @@ const Content: React.FC<ContentProps> = ({ person, onExit }) => {
                              className="w-full h-full flex flex-col items-center justify-center bg-black/5 hover:bg-black/10 transition-colors group cursor-pointer text-center p-4"
                            >
                               <div className="mb-3 opacity-60 group-hover:opacity-100 transition-opacity group-hover:scale-110 duration-500">
-                                {isGDrive ? (
+                                {isGoogleDriveLink(img) ? (
                                     <Folder size={32} strokeWidth={1.5} color={themeColor} />
                                 ) : (
                                     <ImageIcon size={32} strokeWidth={1.5} color={themeColor} />
                                 )}
                               </div>
                               <span className="font-serif italic text-sm opacity-60 group-hover:opacity-100 transition-opacity" style={{ color: themeColor }}>
-                                {isGDrive ? 'Ver en Drive' : 'Ver en Google Photos'}
+                                {isGoogleDriveLink(img) ? 'Abrir Carpeta Drive' : 'Ver en Google Photos'}
                               </span>
                               <ExternalLink size={12} className="mt-2 opacity-40" color={themeColor} />
                            </a>
                         ) : (
                           <img 
-                            src={img} 
+                            // If Drive ID exists, construct the display URL, otherwise use original
+                            src={canEmbedDrive ? `https://drive.google.com/uc?export=view&id=${driveId}` : img} 
                             alt={`Memory ${idx + 1}`} 
                             className="w-full h-full object-cover grayscale-[0.3] hover:grayscale-0 transition-all duration-700"
+                            loading="lazy"
                           />
                         )}
                       </motion.div>
@@ -333,6 +346,14 @@ const Content: React.FC<ContentProps> = ({ person, onExit }) => {
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                   />
+                ) : isDriveVideo ? (
+                  <iframe
+                    className="absolute inset-0 w-full h-full"
+                    src={`https://drive.google.com/file/d/${driveVideoId}/preview`}
+                    title="Google Drive Video"
+                    allow="autoplay; encrypted-media"
+                    allowFullScreen
+                  />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <a 
@@ -347,14 +368,12 @@ const Content: React.FC<ContentProps> = ({ person, onExit }) => {
                       >
                          {isGooglePhotosVideo ? (
                              <ImageIcon size={32} strokeWidth={1.5} color={themeColor} />
-                         ) : isGoogleDriveVideo ? (
-                             <Folder size={32} strokeWidth={1.5} color={themeColor} />
                          ) : (
                              <Play size={32} fill={themeColor} color={themeColor} className="ml-1" />
                          )}
                       </div>
                       <span className="font-serif italic" style={{ color: themeColor }}>
-                        {isGooglePhotosVideo ? 'Ver en Google Photos' : isGoogleDriveVideo ? 'Ver en Drive' : 'Ver externo'}
+                        {isGooglePhotosVideo ? 'Ver en Google Photos' : 'Ver externo'}
                       </span>
                     </a>
                   </div>
