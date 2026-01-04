@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { motion, Variants, AnimatePresence } from 'framer-motion';
 import { Person } from '../types';
-import { Play, Music, ChevronDown, X } from 'lucide-react';
+import { Play, Music, ChevronDown, Image as ImageIcon, ExternalLink, Folder } from 'lucide-react';
 import { useFavicon } from '../hooks/useFavicon';
 
 interface ContentProps {
@@ -15,6 +15,16 @@ const hexToRgb = (hex: string) => {
     return result 
         ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` 
         : '74, 70, 62'; // Fallback
+};
+
+// Helper to detect Google Photos links
+const isGooglePhotosLink = (url: string) => {
+  return url.includes('photos.app.goo.gl') || url.includes('photos.google.com');
+};
+
+// Helper to detect Google Drive links
+const isGoogleDriveLink = (url: string) => {
+  return url.includes('drive.google.com');
 };
 
 const Content: React.FC<ContentProps> = ({ person, onExit }) => {
@@ -110,6 +120,9 @@ const Content: React.FC<ContentProps> = ({ person, onExit }) => {
   };
 
   const isYoutube = person.videoUrl?.includes('youtube.com') || person.videoUrl?.includes('youtu.be');
+  const isGooglePhotosVideo = person.videoUrl ? isGooglePhotosLink(person.videoUrl) : false;
+  const isGoogleDriveVideo = person.videoUrl ? isGoogleDriveLink(person.videoUrl) : false;
+
   const getYoutubeId = (url: string) => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
@@ -244,22 +257,49 @@ const Content: React.FC<ContentProps> = ({ person, onExit }) => {
                   Recuerdos
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {person.images.map((img, idx) => (
-                    <motion.div 
-                      key={idx}
-                      initial={{ opacity: 0 }}
-                      whileInView={{ opacity: 1 }}
-                      transition={{ delay: idx * 0.1, duration: 0.5 }}
-                      className={`relative overflow-hidden aspect-[3/4] rounded-sm shadow-sm border border-transparent hover:border-opacity-50 transition-colors duration-500`}
-                      style={{ borderColor: themeColor }}
-                    >
-                      <img 
-                        src={img} 
-                        alt={`Memory ${idx + 1}`} 
-                        className="w-full h-full object-cover grayscale-[0.3] hover:grayscale-0 transition-all duration-700"
-                      />
-                    </motion.div>
-                  ))}
+                  {person.images.map((img, idx) => {
+                    const isGPhotos = isGooglePhotosLink(img);
+                    const isGDrive = isGoogleDriveLink(img);
+                    const isExternalLink = isGPhotos || isGDrive;
+                    
+                    return (
+                      <motion.div 
+                        key={idx}
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
+                        transition={{ delay: idx * 0.1, duration: 0.5 }}
+                        className={`relative overflow-hidden aspect-[3/4] rounded-sm shadow-sm border border-transparent hover:border-opacity-50 transition-colors duration-500`}
+                        style={{ borderColor: themeColor }}
+                      >
+                        {isExternalLink ? (
+                           <a 
+                             href={img} 
+                             target="_blank" 
+                             rel="noopener noreferrer"
+                             className="w-full h-full flex flex-col items-center justify-center bg-black/5 hover:bg-black/10 transition-colors group cursor-pointer text-center p-4"
+                           >
+                              <div className="mb-3 opacity-60 group-hover:opacity-100 transition-opacity group-hover:scale-110 duration-500">
+                                {isGDrive ? (
+                                    <Folder size={32} strokeWidth={1.5} color={themeColor} />
+                                ) : (
+                                    <ImageIcon size={32} strokeWidth={1.5} color={themeColor} />
+                                )}
+                              </div>
+                              <span className="font-serif italic text-sm opacity-60 group-hover:opacity-100 transition-opacity" style={{ color: themeColor }}>
+                                {isGDrive ? 'Ver en Drive' : 'Ver en Google Photos'}
+                              </span>
+                              <ExternalLink size={12} className="mt-2 opacity-40" color={themeColor} />
+                           </a>
+                        ) : (
+                          <img 
+                            src={img} 
+                            alt={`Memory ${idx + 1}`} 
+                            className="w-full h-full object-cover grayscale-[0.3] hover:grayscale-0 transition-all duration-700"
+                          />
+                        )}
+                      </motion.div>
+                    );
+                  })}
                 </div>
              </div>
           </section>
@@ -305,9 +345,17 @@ const Content: React.FC<ContentProps> = ({ person, onExit }) => {
                         className="w-20 h-20 rounded-full border-2 flex items-center justify-center"
                         style={{ borderColor: themeColor }}
                       >
-                        <Play size={32} fill={themeColor} color={themeColor} className="ml-1" />
+                         {isGooglePhotosVideo ? (
+                             <ImageIcon size={32} strokeWidth={1.5} color={themeColor} />
+                         ) : isGoogleDriveVideo ? (
+                             <Folder size={32} strokeWidth={1.5} color={themeColor} />
+                         ) : (
+                             <Play size={32} fill={themeColor} color={themeColor} className="ml-1" />
+                         )}
                       </div>
-                      <span className="font-serif italic" style={{ color: themeColor }}>Ver externo</span>
+                      <span className="font-serif italic" style={{ color: themeColor }}>
+                        {isGooglePhotosVideo ? 'Ver en Google Photos' : isGoogleDriveVideo ? 'Ver en Drive' : 'Ver externo'}
+                      </span>
                     </a>
                   </div>
                 )}
