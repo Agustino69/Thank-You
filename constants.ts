@@ -167,7 +167,7 @@ export const INITIAL_PEOPLE: Person[] = [
     "videoUrl": "",
     "spotifyUrl": "https://open.spotify.com/track/6QFCMUUq1T2Vf5sFUXcuQ7?si=NUjf7IyZS--9HPCyO4202Q",
     "spotifyMessage": "Si una canción tuvies que representar el 2026, será esa",
-    "themeColor": "#950714",
+    "themeColor": "#800020",
     "easterEggs": [],
     "bgmUrl": "https://archive.org/download/Bandcamp-63012668/63012668.mp3",
     "bgmVolume": 0.1
