@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFavicon } from '../hooks/useFavicon';
-import { EasterEgg } from '../types';
+import { EasterEgg, SystemConfig } from '../types';
 
 interface LandingProps {
   onUnlock: (code: string) => void;
@@ -12,7 +12,25 @@ interface LandingProps {
   systemLogs?: string[];
   onClearError?: () => void;
   transitionColor?: string;
+  systemConfig: SystemConfig;
 }
+
+// Helper to convert Google Drive view links to direct audio stream links
+const getAudioUrl = (url: string) => {
+    if (!url) return '';
+    try {
+        if (url.includes('drive.google.com')) {
+            const matches = url.match(/\/d\/(.+?)(\/|$)/) || url.match(/id=(.+?)(\&|$)/);
+            if (matches && matches[1]) {
+                // export=download works best for audio tags vs export=view
+                return `https://drive.google.com/uc?export=download&id=${matches[1]}`;
+            }
+        }
+        return url;
+    } catch (e) {
+        return url;
+    }
+};
 
 const Landing: React.FC<LandingProps> = ({ 
   onUnlock, 
@@ -22,7 +40,8 @@ const Landing: React.FC<LandingProps> = ({
   activeEasterEgg,
   systemLogs,
   onClearError,
-  transitionColor = '#F9F7F0' 
+  transitionColor = '#F9F7F0',
+  systemConfig
 }) => {
   const [input, setInput] = useState('');
   
@@ -44,6 +63,8 @@ const Landing: React.FC<LandingProps> = ({
   const audioEggRef = useRef<HTMLAudioElement>(null);
   const bootSfxRef = useRef<HTMLAudioElement>(null);
   const ambientSfxRef = useRef<HTMLAudioElement>(null);
+  const beepSfxRef = useRef<HTMLAudioElement>(null);
+  const occasionalSfxRef = useRef<HTMLAudioElement>(null);
 
   // Set Favicon to dark zinc for Landing
   useFavicon('#27272a');
@@ -54,7 +75,7 @@ const Landing: React.FC<LandingProps> = ({
   useEffect(() => {
     // Attempt to play Boot Sound
     const playBootSound = async () => {
-        if (bootSfxRef.current) {
+        if (bootSfxRef.current && systemConfig.bootSfxUrl) {
             bootSfxRef.current.volume = 0.4; // Moderate volume
             try {
                 await bootSfxRef.current.play();
@@ -89,30 +110,54 @@ const Landing: React.FC<LandingProps> = ({
     timeouts.push(finishTimeout);
 
     return () => timeouts.forEach(clearTimeout);
-  }, []);
+  }, []); // Only run once on mount
 
   // ------------------------------------------------
-  // 2. AMBIENT NOISE LOGIC
+  // 2. AMBIENT & OCCASIONAL NOISE LOGIC
   // ------------------------------------------------
   useEffect(() => {
     if (!isBooting) {
         // Start ambient sound loop when boot finishes
-        if (ambientSfxRef.current) {
+        if (ambientSfxRef.current && systemConfig.ambientSfxUrl) {
             ambientSfxRef.current.volume = 0.1; // Low background hum/clicks
             ambientSfxRef.current.play().catch(() => {
                 // Ignore autoplay errors, handled by click listener
             });
         }
     } else {
-        // Ensure ambient is paused while booting (boot sound takes precedence)
         if (ambientSfxRef.current) ambientSfxRef.current.pause();
     }
-  }, [isBooting]);
+  }, [isBooting, systemConfig.ambientSfxUrl]);
+
+  // Occasional Random SFX (Glitches, processing sounds)
+  useEffect(() => {
+    if (isBooting || isUnlocking || !systemConfig.occasionalSfxUrl) return;
+
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const scheduleSound = () => {
+        // Random time between 8 and 20 seconds
+        const delay = Math.random() * 12000 + 8000;
+        
+        timeoutId = setTimeout(() => {
+            if (occasionalSfxRef.current) {
+                occasionalSfxRef.current.volume = 0.15; // Subtle
+                occasionalSfxRef.current.currentTime = 0;
+                occasionalSfxRef.current.play().catch(() => {});
+                scheduleSound(); // Schedule next
+            }
+        }, delay);
+    };
+
+    scheduleSound();
+
+    return () => clearTimeout(timeoutId);
+  }, [isBooting, isUnlocking, systemConfig.occasionalSfxUrl]);
+
 
   // Stop ambient noise when unlocking starts
   useEffect(() => {
     if (isUnlocking && ambientSfxRef.current) {
-        // Fade out logic could go here, for now just pause
         ambientSfxRef.current.pause();
     }
   }, [isUnlocking]);
@@ -126,14 +171,14 @@ const Landing: React.FC<LandingProps> = ({
           inputRef.current?.focus();
           
           // Ensure ambient sound is playing if it was blocked by autoplay policy
-          if (ambientSfxRef.current && ambientSfxRef.current.paused) {
+          if (ambientSfxRef.current && ambientSfxRef.current.paused && systemConfig.ambientSfxUrl) {
              ambientSfxRef.current.play().catch(e => console.error(e));
           }
       }
     };
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
-  }, [isUnlocking, isBooting]);
+  }, [isUnlocking, isBooting, systemConfig.ambientSfxUrl]);
 
   useEffect(() => {
     if (!isBooting) {
@@ -155,21 +200,21 @@ const Landing: React.FC<LandingProps> = ({
         if(ambientSfxRef.current) ambientSfxRef.current.pause();
 
         if (audioEggRef.current) {
-            audioEggRef.current.src = activeEasterEgg.response;
+            audioEggRef.current.src = getAudioUrl(activeEasterEgg.response);
             audioEggRef.current.play().catch(e => console.error("Audio playback failed", e));
         }
     } else {
         if(audioEggRef.current) {
             audioEggRef.current.pause();
             audioEggRef.current.currentTime = 0;
-            // Clear source properly to avoid "no supported sources" error
             if (audioEggRef.current.getAttribute('src')) {
                 audioEggRef.current.removeAttribute('src');
-                audioEggRef.current.load();
+                // Removing load() call to prevent "The element has no supported sources" error
+                // audioEggRef.current.load(); 
             }
         }
-        // Resume ambient if we are just sitting there (not unlocking)
-        if (!isUnlocking && !isBooting && ambientSfxRef.current && ambientSfxRef.current.paused) {
+        // Resume ambient
+        if (!isUnlocking && !isBooting && ambientSfxRef.current && ambientSfxRef.current.paused && systemConfig.ambientSfxUrl) {
             ambientSfxRef.current.play().catch(() => {});
         }
     }
@@ -197,7 +242,7 @@ const Landing: React.FC<LandingProps> = ({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [activeEasterEgg, isBooting, isUnlocking]);
+  }, [activeEasterEgg, isBooting, isUnlocking, systemConfig.ambientSfxUrl]);
 
   // Unlock Animation
   useEffect(() => {
@@ -226,6 +271,14 @@ const Landing: React.FC<LandingProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);
+    
+    // Play Typing Beep
+    if (systemConfig.beepSfxUrl && beepSfxRef.current) {
+        beepSfxRef.current.currentTime = 0;
+        beepSfxRef.current.volume = 0.2;
+        beepSfxRef.current.play().catch(() => {});
+    }
+
     if ((error || activeEasterEgg || systemLogs) && onClearError) {
       onClearError();
     }
@@ -246,12 +299,28 @@ const Landing: React.FC<LandingProps> = ({
       exit={{ opacity: 0, transition: { duration: 1.5 } }} 
       className="h-[100dvh] w-screen bg-black flex flex-col items-center justify-center text-zinc-400 font-mono text-sm selection:bg-zinc-800 selection:text-zinc-200 relative overflow-hidden"
     >
-      {/* Audio elements are rendered but src is managed manually via refs to avoid empty src errors */}
+      {/* Audio elements with Drive URL processing */}
       <audio ref={audioEggRef} className="hidden" />
-      {/* Boot Sound: Computer Startup / Spin up */}
-      <audio ref={bootSfxRef} src="https://cdn.pixabay.com/audio/2022/10/21/audio_3497d51928.mp3" preload="auto" className="hidden" />
-      {/* Ambient Sound: Subtle HDD Clicks / Processing Loop */}
-      <audio ref={ambientSfxRef} src="https://cdn.pixabay.com/audio/2022/03/15/audio_b0445a606f.mp3" loop preload="auto" className="hidden" />
+      
+      {/* Boot Sound */}
+      {systemConfig.bootSfxUrl && (
+          <audio ref={bootSfxRef} src={getAudioUrl(systemConfig.bootSfxUrl)} preload="auto" className="hidden" />
+      )}
+      
+      {/* Ambient Sound */}
+      {systemConfig.ambientSfxUrl && (
+          <audio ref={ambientSfxRef} src={getAudioUrl(systemConfig.ambientSfxUrl)} loop preload="auto" className="hidden" />
+      )}
+
+      {/* Typing Beep */}
+      {systemConfig.beepSfxUrl && (
+          <audio ref={beepSfxRef} src={getAudioUrl(systemConfig.beepSfxUrl)} preload="auto" className="hidden" />
+      )}
+
+      {/* Occasional Ambient SFX */}
+      {systemConfig.occasionalSfxUrl && (
+          <audio ref={occasionalSfxRef} src={getAudioUrl(systemConfig.occasionalSfxUrl)} preload="auto" className="hidden" />
+      )}
 
       {/* FADE OVERLAY TRANSITION */}
       <AnimatePresence>
@@ -316,7 +385,7 @@ const Landing: React.FC<LandingProps> = ({
                     </div>
                 ) : (
                     <div className="opacity-50">
-                        <p>ARCHIVE_SYS v.1.5.1</p>
+                        <p>ARCHIVE_SYS v.1.7.0</p>
                         <p>STATUS: {isUnlocking ? 'UNLOCKING...' : 'LOCKED'}</p>
                         <p>.....................</p>
                     </div>
@@ -455,7 +524,7 @@ const Landing: React.FC<LandingProps> = ({
                             className="flex flex-col gap-1 text-zinc-600"
                         >
                             <span>{'>'} RESULT_FOUND:</span>
-                            <span className="text-zinc-400 italic">"Prueba con tu nombre, 'guest' o explora códigos."</span>
+                            <span className="text-zinc-400 italic">"Prueba con tu nombre, o explora códigos."</span>
                         </motion.div>
                         )}
                     </motion.div>

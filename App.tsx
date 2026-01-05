@@ -3,13 +3,14 @@ import { AnimatePresence } from 'framer-motion';
 import Landing from './components/Landing';
 import Content from './components/Content';
 import Admin from './components/Admin';
-import { Person, ViewState, EasterEgg } from './types';
-import { ADMIN_CODE, PROJECT_LOGS } from './constants';
-import { getPeople, savePeople } from './services/storageService';
+import { Person, ViewState, EasterEgg, SystemConfig } from './types';
+import { ADMIN_CODE, PROJECT_LOGS, DEFAULT_SYSTEM_CONFIG } from './constants';
+import { getPeople, savePeople, getSystemConfig, saveSystemConfig } from './services/storageService';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('LANDING');
   const [people, setPeople] = useState<Person[]>([]);
+  const [systemConfig, setSystemConfig] = useState<SystemConfig>(DEFAULT_SYSTEM_CONFIG);
   const [activePerson, setActivePerson] = useState<Person | null>(null);
   
   const [loginError, setLoginError] = useState(false);
@@ -21,6 +22,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     setPeople(getPeople());
+    setSystemConfig(getSystemConfig());
   }, []);
 
   const handleUnlock = (code: string) => {
@@ -93,6 +95,11 @@ const App: React.FC = () => {
     savePeople(updatedPeople);
     setPeople(updatedPeople);
   };
+  
+  const handleSystemSave = (updatedConfig: SystemConfig) => {
+    saveSystemConfig(updatedConfig);
+    setSystemConfig(updatedConfig);
+  };
 
   const handleExitContent = () => {
     setActivePerson(null);
@@ -119,6 +126,7 @@ const App: React.FC = () => {
                 setShowChangelog(false);
             }}
             transitionColor={activePerson?.themeColor}
+            systemConfig={systemConfig}
           />
         )}
         
@@ -130,7 +138,9 @@ const App: React.FC = () => {
       {view === 'ADMIN' && (
         <Admin 
           initialPeople={people} 
+          initialSystemConfig={systemConfig}
           onSave={handleAdminSave} 
+          onSaveSystemConfig={handleSystemSave}
           onClose={() => setView('LANDING')} 
         />
       )}

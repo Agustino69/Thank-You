@@ -1,4 +1,4 @@
-import { Person } from './types';
+import { Person, SystemConfig } from './types';
 
 export const ADMIN_CODE = 'admin4126';
 
@@ -9,8 +9,17 @@ export const PROJECT_LOGS = [
   "[v1.3.0] NET  :: Added Google Drive & Photos Native Embedding.",
   "[v1.4.0] CORE :: Multi-video Support & Audio Playback.",
   "[v1.5.0] SYS  :: Easter Eggs: Audio, Countdowns & Secrets.",
-  "[v1.5.1] CMD  :: System Log Terminal View Access."
+  "[v1.5.1] CMD  :: System Log Terminal View Access.",
+  "[v1.6.0] SFX  :: Dynamic System Audio Configuration.",
+  "[v1.7.0] DRV  :: Google Drive Audio Streaming & Random SFX."
 ];
+
+export const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
+  bootSfxUrl: 'https://cdn.pixabay.com/audio/2022/10/21/audio_3497d51928.mp3', // HDD Spin up
+  ambientSfxUrl: 'https://cdn.pixabay.com/audio/2022/03/15/audio_b0445a606f.mp3', // HDD Hum/Clicks
+  beepSfxUrl: 'https://cdn.pixabay.com/download/audio/2022/03/24/audio_82ccc5c65b.mp3?filename=retro-computer-typing-sound-113589.mp3', // Key press beep
+  occasionalSfxUrl: 'https://cdn.pixabay.com/download/audio/2022/03/10/audio_c39b75225c.mp3?filename=glitch-bass-noise-104938.mp3' // Occasional glitch/processing
+};
 
 export const INITIAL_PEOPLE: Person[] = [
   {

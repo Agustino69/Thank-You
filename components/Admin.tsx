@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Person, EasterEgg, EasterEggType } from '../types';
-import { Plus, Trash2, Save, X, Copy, Check, HelpCircle, Code, Volume2, Gamepad2, Calendar, Layout, Image, Youtube, Music, List, Mic } from 'lucide-react';
+import { Person, EasterEgg, EasterEggType, SystemConfig } from '../types';
+import { Plus, Trash2, Save, X, Copy, Check, HelpCircle, Code, Volume2, Gamepad2, Calendar, Layout, Image, Youtube, Music, List, Mic, Settings, HardDrive, Keyboard, Sparkles } from 'lucide-react';
 import { useFavicon } from '../hooks/useFavicon';
 
 // Simple ID generator replacement
@@ -8,23 +8,36 @@ const generateId = () => Math.random().toString(36).substr(2, 9);
 
 interface AdminProps {
   initialPeople: Person[];
+  initialSystemConfig: SystemConfig;
   onSave: (people: Person[]) => void;
+  onSaveSystemConfig: (config: SystemConfig) => void;
   onClose: () => void;
 }
 
 type TabType = 'info' | 'gallery' | 'media' | 'secrets';
+type EditorMode = 'PROFILES' | 'SYSTEM';
 
-const Admin: React.FC<AdminProps> = ({ initialPeople, onSave, onClose }) => {
+const Admin: React.FC<AdminProps> = ({ initialPeople, initialSystemConfig, onSave, onSaveSystemConfig, onClose }) => {
+  const [mode, setMode] = useState<EditorMode>('PROFILES');
+  
+  // Profile State
   const [people, setPeople] = useState<Person[]>(initialPeople);
   const [selectedId, setSelectedId] = useState<string | null>(people[0]?.id || null);
   const [activeTab, setActiveTab] = useState<TabType>('info');
+  
+  // System Config State
+  const [systemConfig, setSystemConfig] = useState<SystemConfig>(initialSystemConfig);
+  
+  // UI State
   const [hasCopied, setHasCopied] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
 
   // Set favicon for Admin panel
   useFavicon('#000000');
 
-  // Form states
+  // -------------------------
+  // PROFILE HANDLERS
+  // -------------------------
   const selectedPerson = people.find(p => p.id === selectedId);
 
   const handleUpdate = (field: keyof Person, value: any) => {
@@ -91,6 +104,7 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, onSave, onClose }) => {
     setPeople([...people, newPerson]);
     setSelectedId(newPerson.id);
     setActiveTab('info');
+    setMode('PROFILES');
   };
 
   const handleDelete = (id: string) => {
@@ -101,9 +115,24 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, onSave, onClose }) => {
     }
   };
 
+  // -------------------------
+  // SYSTEM CONFIG HANDLERS
+  // -------------------------
+  const handleUpdateSystem = (field: keyof SystemConfig, value: string) => {
+      setSystemConfig(prev => ({ ...prev, [field]: value }));
+  };
+
+  // -------------------------
+  // SAVE & EXPORT
+  // -------------------------
   const handleSaveAll = () => {
-    onSave(people);
-    alert('Datos guardados localmente. Recuerda usar "Copiar JSON" para guardar permanentemente.');
+    if (mode === 'PROFILES') {
+        onSave(people);
+        alert('Perfiles guardados localmente.');
+    } else {
+        onSaveSystemConfig(systemConfig);
+        alert('Configuración del sistema guardada.');
+    }
   };
 
   const copyToClipboard = () => {
@@ -145,7 +174,7 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, onSave, onClose }) => {
       {/* Sidebar List */}
       <div className="w-full md:w-64 bg-gray-50 border-r border-gray-200 flex flex-col h-1/4 md:h-full">
         <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-100">
-          <span className="font-bold uppercase tracking-wider text-xs">Perfiles</span>
+          <span className="font-bold uppercase tracking-wider text-xs">Admin Panel</span>
           <div className="flex gap-2">
             <button onClick={() => setShowTutorial(true)} className="p-1 text-blue-600 hover:bg-blue-100 rounded">
               <HelpCircle size={16} />
@@ -155,38 +184,125 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, onSave, onClose }) => {
             </button>
           </div>
         </div>
+        
+        {/* Profile List */}
         <div className="flex-1 overflow-y-auto">
-          {people.map(p => (
-            <button
-              key={p.id}
-              onClick={() => setSelectedId(p.id)}
-              className={`w-full text-left px-4 py-3 border-b border-gray-100 hover:bg-gray-100 flex justify-between items-center ${selectedId === p.id ? 'bg-white border-l-4 border-l-blue-600 shadow-sm' : ''}`}
-            >
-              <div className="truncate">
-                <div className="font-semibold text-gray-900">
-                  {p.accessKeys && p.accessKeys.length > 0 ? p.accessKeys[0] : '(sin clave)'}
+            <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase">Perfiles</div>
+            {people.map(p => (
+                <button
+                key={p.id}
+                onClick={() => { setSelectedId(p.id); setMode('PROFILES'); }}
+                className={`w-full text-left px-4 py-3 border-b border-gray-100 hover:bg-gray-100 flex justify-between items-center ${mode === 'PROFILES' && selectedId === p.id ? 'bg-white border-l-4 border-l-blue-600 shadow-sm' : ''}`}
+                >
+                <div className="truncate">
+                    <div className="font-semibold text-gray-900">
+                    {p.accessKeys && p.accessKeys.length > 0 ? p.accessKeys[0] : '(sin clave)'}
+                    </div>
+                    <div className="text-xs text-gray-500">{p.displayName}</div>
                 </div>
-                <div className="text-xs text-gray-500">{p.displayName}</div>
-              </div>
-              <button 
-                onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
-                className="text-gray-400 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100"
-              >
-                <Trash2 size={14} />
-              </button>
-            </button>
-          ))}
+                <button 
+                    onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
+                    className="text-gray-400 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100"
+                >
+                    <Trash2 size={14} />
+                </button>
+                </button>
+            ))}
         </div>
-        <div className="p-4 border-t border-gray-200">
-          <button onClick={handleAddPerson} className="w-full py-2 flex items-center justify-center gap-2 border border-dashed border-gray-400 rounded hover:bg-white hover:border-blue-500 hover:text-blue-500 transition-colors">
-            <Plus size={16} /> Nuevo Perfil
+
+        <div className="p-4 border-t border-gray-200 space-y-2">
+           {/* Add Person */}
+          <button onClick={handleAddPerson} className="w-full py-2 flex items-center justify-center gap-2 border border-dashed border-gray-400 rounded hover:bg-white hover:border-blue-500 hover:text-blue-500 transition-colors text-xs">
+            <Plus size={14} /> Nuevo Perfil
+          </button>
+          
+          {/* System Config Button */}
+          <button 
+             onClick={() => setMode('SYSTEM')}
+             className={`w-full py-2 flex items-center justify-center gap-2 border rounded transition-colors text-xs font-bold uppercase ${mode === 'SYSTEM' ? 'bg-zinc-800 text-white border-zinc-900' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-100'}`}
+          >
+             <Settings size={14} /> Configuración Sistema
           </button>
         </div>
       </div>
 
       {/* Main Editor Area */}
       <div className="flex-1 flex flex-col h-3/4 md:h-full bg-white overflow-hidden">
-        {selectedPerson ? (
+        {mode === 'SYSTEM' ? (
+             <div className="flex-1 overflow-y-auto p-6 md:p-10 bg-gray-50/30">
+                 <div className="max-w-2xl mx-auto space-y-6">
+                    <h2 className="text-xl font-bold text-zinc-800 flex items-center gap-2 mb-6">
+                        <Settings className="text-zinc-500" /> Configuración Global
+                    </h2>
+                    
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-6">
+                        <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-100">
+                            <HardDrive size={18} className="text-zinc-600" />
+                            <h3 className="font-bold uppercase text-xs text-zinc-500">Audio del Landing (Arranque)</h3>
+                        </div>
+                        
+                        <div>
+                            <label className="block text-xs font-bold uppercase text-gray-500 mb-2">Sonido de Boot (Inicio)</label>
+                            <input 
+                                type="text"
+                                value={systemConfig.bootSfxUrl}
+                                onChange={(e) => handleUpdateSystem('bootSfxUrl', e.target.value)}
+                                placeholder="https://..."
+                                className="w-full p-2 border border-gray-300 rounded focus:border-blue-500 outline-none font-mono text-xs"
+                            />
+                            <p className="text-[10px] text-gray-400 mt-1">Sonido corto de disco duro iniciando.</p>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold uppercase text-gray-500 mb-2">Sonido Ambiental (Loop)</label>
+                            <input 
+                                type="text"
+                                value={systemConfig.ambientSfxUrl}
+                                onChange={(e) => handleUpdateSystem('ambientSfxUrl', e.target.value)}
+                                placeholder="https://..."
+                                className="w-full p-2 border border-gray-300 rounded focus:border-blue-500 outline-none font-mono text-xs"
+                            />
+                             <p className="text-[10px] text-gray-400 mt-1">Sonido de fondo constante (ventiladores, zumbido).</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-6">
+                        <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-100">
+                            <Sparkles size={18} className="text-zinc-600" />
+                            <h3 className="font-bold uppercase text-xs text-zinc-500">Efectos Especiales</h3>
+                        </div>
+                        
+                        <div>
+                            <label className="block text-xs font-bold uppercase text-gray-500 mb-2 flex items-center gap-2">
+                                <Keyboard size={14} /> Beep al Escribir
+                            </label>
+                            <input 
+                                type="text"
+                                value={systemConfig.beepSfxUrl || ''}
+                                onChange={(e) => handleUpdateSystem('beepSfxUrl', e.target.value)}
+                                placeholder="https://..."
+                                className="w-full p-2 border border-gray-300 rounded focus:border-blue-500 outline-none font-mono text-xs"
+                            />
+                            <p className="text-[10px] text-gray-400 mt-1">Sonido breve al presionar teclas. Compatible con Google Drive.</p>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold uppercase text-gray-500 mb-2 flex items-center gap-2">
+                                <Sparkles size={14} /> Ruido Ocasional (Random)
+                            </label>
+                            <input 
+                                type="text"
+                                value={systemConfig.occasionalSfxUrl || ''}
+                                onChange={(e) => handleUpdateSystem('occasionalSfxUrl', e.target.value)}
+                                placeholder="https://..."
+                                className="w-full p-2 border border-gray-300 rounded focus:border-blue-500 outline-none font-mono text-xs"
+                            />
+                             <p className="text-[10px] text-gray-400 mt-1">Sonido que se reproduce aleatoriamente (8-20s) en el landing (glitch, estática).</p>
+                        </div>
+                    </div>
+                 </div>
+             </div>
+        ) : selectedPerson ? (
           <>
             {/* Tabs Header */}
             <div className="flex border-b border-gray-200 bg-white">
@@ -495,13 +611,15 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, onSave, onClose }) => {
         {/* Footer Actions */}
         <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center z-10">
           <div className="flex gap-2">
-             <button 
-              onClick={copyToClipboard}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 px-4 py-2 border border-gray-300 rounded bg-white"
-            >
-              {hasCopied ? <Check size={16} className="text-green-600"/> : <Copy size={16} />}
-              <span className="text-xs font-bold uppercase">{hasCopied ? 'Copiado' : 'Copiar JSON'}</span>
-            </button>
+             {mode === 'PROFILES' && (
+                <button 
+                    onClick={copyToClipboard}
+                    className="flex items-center gap-2 text-gray-600 hover:text-gray-900 px-4 py-2 border border-gray-300 rounded bg-white"
+                    >
+                    {hasCopied ? <Check size={16} className="text-green-600"/> : <Copy size={16} />}
+                    <span className="text-xs font-bold uppercase">{hasCopied ? 'Copiado' : 'Copiar JSON'}</span>
+                </button>
+             )}
           </div>
 
           <button 

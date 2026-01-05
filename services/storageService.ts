@@ -1,7 +1,8 @@
-import { Person } from '../types';
-import { INITIAL_PEOPLE } from '../constants';
+import { Person, SystemConfig } from '../types';
+import { INITIAL_PEOPLE, DEFAULT_SYSTEM_CONFIG } from '../constants';
 
 const STORAGE_KEY = 'gratitude_app_data';
+const CONFIG_KEY = 'gratitude_app_config';
 
 export const getPeople = (): Person[] => {
   try {
@@ -40,5 +41,26 @@ export const savePeople = (people: Person[]): void => {
   } catch (e) {
     console.error("Error saving to storage", e);
     alert("Error saving data. LocalStorage might be full.");
+  }
+};
+
+export const getSystemConfig = (): SystemConfig => {
+  try {
+    const stored = localStorage.getItem(CONFIG_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+    return DEFAULT_SYSTEM_CONFIG;
+  } catch (e) {
+    console.error("Error reading config", e);
+    return DEFAULT_SYSTEM_CONFIG;
+  }
+};
+
+export const saveSystemConfig = (config: SystemConfig): void => {
+  try {
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+  } catch (e) {
+    console.error("Error saving config", e);
   }
 };

@@ -26,4 +26,12 @@ export interface Person {
   easterEggs?: EasterEgg[]; 
 }
 
+export interface SystemConfig {
+  bootSfxUrl: string;
+  ambientSfxUrl: string;
+  beepSfxUrl?: string; // Keystroke or action beep
+  occasionalSfxUrl?: string; // Random glitch or processing sound
+  bgmVolume?: number; // Global volume modifier if needed later
+}
+
 export type ViewState = 'LANDING' | 'CONTENT' | 'ADMIN';
