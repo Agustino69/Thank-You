@@ -25,39 +25,135 @@ const Landing: React.FC<LandingProps> = ({
   transitionColor = '#F9F7F0' 
 }) => {
   const [input, setInput] = useState('');
-  const [showHintButton, setShowHintButton] = useState(false);
-  const [hintRevealed, setHintRevealed] = useState(false);
-  const [logs, setLogs] = useState<string[]>([]);
   
-  // Timer state for countdowns
+  // Boot Sequence State
+  const [isBooting, setIsBooting] = useState(true);
+  const [bootLines, setBootLines] = useState<string[]>([]);
+
+  // Hint State
+  const [showHintButton, setShowHintButton] = useState(false);
+  const [hintState, setHintState] = useState<'IDLE' | 'SEARCHING' | 'REVEALED'>('IDLE');
+  
+  // Unlock / Logs State
+  const [logs, setLogs] = useState<string[]>([]);
   const [timeLeft, setTimeLeft] = useState<string>('');
   
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  // Audio Refs
   const audioEggRef = useRef<HTMLAudioElement>(null);
+  const bootSfxRef = useRef<HTMLAudioElement>(null);
+  const ambientSfxRef = useRef<HTMLAudioElement>(null);
 
   // Set Favicon to dark zinc for Landing
   useFavicon('#27272a');
 
-  // Focus input on click anywhere, unless unlocking
+  // ------------------------------------------------
+  // 1. BOOT SEQUENCE ANIMATION & AUDIO
+  // ------------------------------------------------
+  useEffect(() => {
+    // Attempt to play Boot Sound
+    const playBootSound = async () => {
+        if (bootSfxRef.current) {
+            bootSfxRef.current.volume = 0.4; // Moderate volume
+            try {
+                await bootSfxRef.current.play();
+            } catch (e) {
+                console.log("Auto-play blocked, waiting for interaction");
+            }
+        }
+    };
+    playBootSound();
+
+    const bootSequence = [
+      { text: '> INITIALIZING_BIOS...', delay: 100 },
+      { text: '> CHECKING_MEMORY_BLOCKS... OK', delay: 400 },
+      { text: '> LOADING_KERNEL_V1.5.1...', delay: 800 },
+      { text: '> DECRYPTING_SECURE_LAYER...', delay: 1400 },
+      { text: '> MOUNTING_ARCHIVE_SYS...', delay: 1900 },
+      { text: '> SYSTEM_READY.', delay: 2400 }
+    ];
+
+    let timeouts: ReturnType<typeof setTimeout>[] = [];
+
+    bootSequence.forEach(({ text, delay }) => {
+      const t = setTimeout(() => {
+        setBootLines(prev => [...prev, text]);
+      }, delay);
+      timeouts.push(t);
+    });
+
+    const finishTimeout = setTimeout(() => {
+      setIsBooting(false);
+    }, 2800);
+    timeouts.push(finishTimeout);
+
+    return () => timeouts.forEach(clearTimeout);
+  }, []);
+
+  // ------------------------------------------------
+  // 2. AMBIENT NOISE LOGIC
+  // ------------------------------------------------
+  useEffect(() => {
+    if (!isBooting) {
+        // Start ambient sound loop when boot finishes
+        if (ambientSfxRef.current) {
+            ambientSfxRef.current.volume = 0.1; // Low background hum/clicks
+            ambientSfxRef.current.play().catch(() => {
+                // Ignore autoplay errors, handled by click listener
+            });
+        }
+    } else {
+        // Ensure ambient is paused while booting (boot sound takes precedence)
+        if (ambientSfxRef.current) ambientSfxRef.current.pause();
+    }
+  }, [isBooting]);
+
+  // Stop ambient noise when unlocking starts
+  useEffect(() => {
+    if (isUnlocking && ambientSfxRef.current) {
+        // Fade out logic could go here, for now just pause
+        ambientSfxRef.current.pause();
+    }
+  }, [isUnlocking]);
+
+  // ------------------------------------------------
+  // 3. FOCUS & INTERACTION
+  // ------------------------------------------------
   useEffect(() => {
     const handleClick = () => {
-      if (!isUnlocking) inputRef.current?.focus();
+      if (!isUnlocking && !isBooting) {
+          inputRef.current?.focus();
+          
+          // Ensure ambient sound is playing if it was blocked by autoplay policy
+          if (ambientSfxRef.current && ambientSfxRef.current.paused) {
+             ambientSfxRef.current.play().catch(e => console.error(e));
+          }
+      }
     };
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
-  }, [isUnlocking]);
+  }, [isUnlocking, isBooting]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowHintButton(true);
-    }, 8000); 
-    return () => clearTimeout(timer);
-  }, []);
+    if (!isBooting) {
+      const timer = setTimeout(() => {
+        setShowHintButton(true);
+      }, 5000); // Show hint button 5s after boot
+      return () => clearTimeout(timer);
+    }
+  }, [isBooting]);
 
-  // Handle Countdown Logic and Audio Playback
+  // ------------------------------------------------
+  // 4. LOGIC & EGGS
+  // ------------------------------------------------
+
+  // Handle Audio Egg Playback
   useEffect(() => {
-    // 1. Handle Audio Egg
     if (activeEasterEgg && activeEasterEgg.type === 'audio' && activeEasterEgg.response) {
+        // Pause ambient during specific audio eggs
+        if(ambientSfxRef.current) ambientSfxRef.current.pause();
+
         if (audioEggRef.current) {
             audioEggRef.current.src = activeEasterEgg.response;
             audioEggRef.current.play().catch(e => console.error("Audio playback failed", e));
@@ -67,9 +163,13 @@ const Landing: React.FC<LandingProps> = ({
             audioEggRef.current.pause();
             audioEggRef.current.src = "";
         }
+        // Resume ambient if we are just sitting there (not unlocking)
+        if (!isUnlocking && !isBooting && ambientSfxRef.current && ambientSfxRef.current.paused) {
+            ambientSfxRef.current.play().catch(() => {});
+        }
     }
 
-    // 2. Handle Countdown Egg
+    // Handle Countdown Egg
     if (!activeEasterEgg || activeEasterEgg.type !== 'countdown' || !activeEasterEgg.date) return;
 
     const interval = setInterval(() => {
@@ -92,9 +192,9 @@ const Landing: React.FC<LandingProps> = ({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [activeEasterEgg]);
+  }, [activeEasterEgg, isBooting, isUnlocking]);
 
-  // Handle the success animation sequence
+  // Unlock Animation
   useEffect(() => {
     if (isUnlocking) {
       const sequence = async () => {
@@ -114,17 +214,24 @@ const Landing: React.FC<LandingProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim() && !isUnlocking) {
+    if (input.trim() && !isUnlocking && !isBooting) {
       onUnlock(input.trim().toLowerCase());
     }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);
-    // Clear any errors or system displays when user starts typing again
     if ((error || activeEasterEgg || systemLogs) && onClearError) {
       onClearError();
     }
+  };
+
+  // Enhanced Hint Handler
+  const handleHintClick = () => {
+    setHintState('SEARCHING');
+    setTimeout(() => {
+      setHintState('REVEALED');
+    }, 1500);
   };
 
   return (
@@ -135,6 +242,10 @@ const Landing: React.FC<LandingProps> = ({
       className="h-[100dvh] w-screen bg-black flex flex-col items-center justify-center text-zinc-400 font-mono text-sm selection:bg-zinc-800 selection:text-zinc-200 relative overflow-hidden"
     >
       <audio ref={audioEggRef} className="hidden" />
+      {/* Boot Sound: Computer Startup / Spin up */}
+      <audio ref={bootSfxRef} src="https://cdn.pixabay.com/audio/2022/10/21/audio_3497d51928.mp3" preload="auto" className="hidden" />
+      {/* Ambient Sound: Subtle HDD Clicks / Processing Loop */}
+      <audio ref={ambientSfxRef} src="https://cdn.pixabay.com/audio/2022/03/15/audio_b0445a606f.mp3" loop preload="auto" className="hidden" />
 
       {/* FADE OVERLAY TRANSITION */}
       <AnimatePresence>
@@ -151,161 +262,203 @@ const Landing: React.FC<LandingProps> = ({
 
       <div className="w-full max-w-lg px-6 flex flex-col gap-4 md:gap-6 relative z-10 -mt-12 md:mt-0">
         
-        {/* Header / System Status / Changelog View */}
-        <div className="flex flex-col gap-1 text-[10px] md:text-xs mb-4 md:mb-8 min-h-[5rem]">
-          {systemLogs ? (
-             <div className="flex flex-col gap-1.5 border-l-2 border-zinc-800 pl-3 py-1">
-                {systemLogs.map((log, idx) => (
-                    <motion.div 
-                        key={idx}
-                        initial={{ opacity: 0, x: -5 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.1 }}
-                        className="text-emerald-500/80"
-                    >
-                        {log}
-                    </motion.div>
+        {/* ==============================================
+            BOOT SEQUENCE OR MAIN INTERFACE
+           ============================================== */}
+        {isBooting ? (
+            <div className="flex flex-col gap-2 font-mono text-xs md:text-sm h-64 justify-end pb-12">
+                {bootLines.map((line, idx) => (
+                    <div key={idx} className="text-zinc-500">
+                        {line}
+                    </div>
                 ))}
-                <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: systemLogs.length * 0.1 }}
-                    className="text-zinc-600 mt-2"
-                >
-                    &gt; END_OF_LOG
-                </motion.div>
-             </div>
-          ) : (
-             <div className="opacity-50">
-                <p>ARCHIVE_SYS v.1.5.1</p>
-                <p>STATUS: {isUnlocking ? 'UNLOCKING...' : 'LOCKED'}</p>
-                <p>.....................</p>
-             </div>
-          )}
-        </div>
-
-        {/* Unlocking Logs View */}
-        {isUnlocking ? (
-            <div className="flex flex-col gap-2 h-32 justify-end pb-2">
-                {logs.map((log, idx) => (
-                    <motion.div
-                        key={idx}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="text-zinc-100 text-[11px] md:text-xs uppercase tracking-wider"
-                    >
-                        {log}
-                    </motion.div>
-                ))}
+                 <motion.span 
+                    animate={{ opacity: [0, 1, 0] }}
+                    transition={{ repeat: Infinity, duration: 0.5 }}
+                    className="w-2 h-4 bg-zinc-500 inline-block"
+                />
             </div>
         ) : (
-            /* Standard Input View */
-            <form onSubmit={handleSubmit} className="relative w-full">
-            <label htmlFor="cmd" className="sr-only">Input Code</label>
-            
-            <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-3">
-                <span className="text-zinc-600 select-none text-lg">{'>'}</span>
-                <div className="relative flex-1">
-                    <input
-                    ref={inputRef}
-                    id="cmd"
-                    type="text"
-                    inputMode="text"
-                    autoCapitalize="none"
-                    value={input}
-                    onChange={handleInputChange}
-                    autoComplete="off"
-                    autoFocus
-                    className="w-full bg-transparent border-none outline-none text-transparent placeholder-transparent p-0 uppercase tracking-widest caret-transparent text-base md:text-sm"
-                    />
-                    {/* Custom Block Cursor implementation */}
-                    <span className="absolute inset-0 pointer-events-none text-zinc-200 tracking-widest uppercase flex items-center text-base md:text-sm">
-                    {input}
-                    <motion.span 
-                        animate={{ opacity: [1, 1, 0, 0] }}
-                        transition={{ 
-                          repeat: Infinity, 
-                          duration: 0.8, 
-                          ease: "linear",
-                          times: [0, 0.5, 0.5, 1]
-                        }}
-                        className="inline-block w-2.5 h-4 bg-zinc-500 ml-1"
-                    />
-                    </span>
-                </div>
-                </div>
+            <>
+                {/* Header / System Status / Changelog View */}
+                <motion.div 
+                    initial={{ opacity: 0 }} 
+                    animate={{ opacity: 1 }} 
+                    className="flex flex-col gap-1 text-[10px] md:text-xs mb-4 md:mb-8 min-h-[5rem]"
+                >
+                {systemLogs ? (
+                    <div className="flex flex-col gap-1.5 border-l-2 border-zinc-800 pl-3 py-1">
+                        {systemLogs.map((log, idx) => (
+                            <motion.div 
+                                key={idx}
+                                initial={{ opacity: 0, x: -5 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: idx * 0.1 }}
+                                className="text-emerald-500/80"
+                            >
+                                {log}
+                            </motion.div>
+                        ))}
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: systemLogs.length * 0.1 }}
+                            className="text-zinc-600 mt-2"
+                        >
+                            &gt; END_OF_LOG
+                        </motion.div>
+                    </div>
+                ) : (
+                    <div className="opacity-50">
+                        <p>ARCHIVE_SYS v.1.5.1</p>
+                        <p>STATUS: {isUnlocking ? 'UNLOCKING...' : 'LOCKED'}</p>
+                        <p>.....................</p>
+                    </div>
+                )}
+                </motion.div>
 
-                {/* Error Message or System Message */}
-                <div className="min-h-[1.5rem] pl-7">
-                <AnimatePresence mode="wait">
-                    {error && (
+                {/* Unlocking Logs View */}
+                {isUnlocking ? (
+                    <div className="flex flex-col gap-2 h-32 justify-end pb-2">
+                        {logs.map((log, idx) => (
+                            <motion.div
+                                key={idx}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                className="text-zinc-100 text-[11px] md:text-xs uppercase tracking-wider"
+                            >
+                                {log}
+                            </motion.div>
+                        ))}
+                    </div>
+                ) : (
+                    /* Standard Input View */
+                    <motion.form 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                        onSubmit={handleSubmit} 
+                        className="relative w-full"
+                    >
+                    <label htmlFor="cmd" className="sr-only">Input Code</label>
+                    
+                    <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-3">
+                        <span className="text-zinc-600 select-none text-lg">{'>'}</span>
+                        <div className="relative flex-1">
+                            <input
+                            ref={inputRef}
+                            id="cmd"
+                            type="text"
+                            inputMode="text"
+                            autoCapitalize="none"
+                            value={input}
+                            onChange={handleInputChange}
+                            autoComplete="off"
+                            autoFocus
+                            className="w-full bg-transparent border-none outline-none text-transparent placeholder-transparent p-0 uppercase tracking-widest caret-transparent text-base md:text-sm"
+                            />
+                            {/* Custom Block Cursor implementation */}
+                            <span className="absolute inset-0 pointer-events-none text-zinc-200 tracking-widest uppercase flex items-center text-base md:text-sm">
+                            {input}
+                            <motion.span 
+                                animate={{ opacity: [1, 1, 0, 0] }}
+                                transition={{ 
+                                repeat: Infinity, 
+                                duration: 0.8, 
+                                ease: "linear",
+                                times: [0, 0.5, 0.5, 1]
+                                }}
+                                className="inline-block w-2.5 h-4 bg-zinc-500 ml-1"
+                            />
+                            </span>
+                        </div>
+                        </div>
+
+                        {/* Error Message or System Message */}
+                        <div className="min-h-[1.5rem] pl-7">
+                        <AnimatePresence mode="wait">
+                            {error && (
+                            <motion.div
+                                key="error"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="text-red-900 text-[10px] md:text-xs"
+                            >
+                                ERR: ACCESS_DENIED // INVALID_KEY
+                            </motion.div>
+                            )}
+                            {activeEasterEgg && (
+                            <motion.div
+                                key="sys"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="text-amber-700 text-[10px] md:text-xs flex flex-col gap-1"
+                            >
+                                {activeEasterEgg.type === 'countdown' ? (
+                                    <>
+                                        <span className="uppercase tracking-widest">{`> TARGET: "${activeEasterEgg.response}"`}</span>
+                                        <span className="text-zinc-200 font-bold tracking-widest text-xs md:text-sm">{timeLeft}</span>
+                                    </>
+                                ) : activeEasterEgg.type === 'audio' ? (
+                                    <span className="uppercase tracking-widest animate-pulse">{`> PLAYING_AUDIO_STREAM...`}</span>
+                                ) : (
+                                    <span>{`> SYSTEM_RESPONSE: "${activeEasterEgg.response}"`}</span>
+                                )}
+                            </motion.div>
+                            )}
+                        </AnimatePresence>
+                        </div>
+                    </div>
+                    </motion.form>
+                )}
+
+                {/* Footer / Hint */}
+                <div className="mt-8 md:mt-12 flex flex-col items-start gap-4 h-12">
+                {!isUnlocking && (
+                    <AnimatePresence>
+                    {showHintButton && (
                     <motion.div
-                        key="error"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="text-red-900 text-[10px] md:text-xs"
+                        className="text-[10px] md:text-xs"
                     >
-                        ERR: ACCESS_DENIED // INVALID_KEY
-                    </motion.div>
-                    )}
-                    {activeEasterEgg && (
-                    <motion.div
-                        key="sys"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="text-amber-700 text-[10px] md:text-xs flex flex-col gap-1"
-                    >
-                        {activeEasterEgg.type === 'countdown' ? (
-                            <>
-                                <span className="uppercase tracking-widest">{`> TARGET: "${activeEasterEgg.response}"`}</span>
-                                <span className="text-zinc-200 font-bold tracking-widest text-xs md:text-sm">{timeLeft}</span>
-                            </>
-                        ) : activeEasterEgg.type === 'audio' ? (
-                            <span className="uppercase tracking-widest animate-pulse">{`> PLAYING_AUDIO_STREAM...`}</span>
-                        ) : (
-                            <span>{`> SYSTEM_RESPONSE: "${activeEasterEgg.response}"`}</span>
+                        {hintState === 'IDLE' && (
+                        <button
+                            type="button"
+                            onClick={handleHintClick}
+                            className="text-zinc-800 hover:text-zinc-600 hover:bg-zinc-900 transition-colors px-2 py-1 -ml-1 border border-zinc-900 rounded group flex items-center gap-2"
+                        >
+                            <span>[ --hint ]</span>
+                        </button>
+                        )}
+                        
+                        {hintState === 'SEARCHING' && (
+                            <div className="text-zinc-600 animate-pulse flex items-center gap-2">
+                                <span>{'>'} SEARCHING_DB...</span>
+                            </div>
+                        )}
+
+                        {hintState === 'REVEALED' && (
+                        <motion.div 
+                            initial={{ opacity: 0, x: -5 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="flex flex-col gap-1 text-zinc-600"
+                        >
+                            <span>{'>'} RESULT_FOUND:</span>
+                            <span className="text-zinc-400 italic">"Prueba con tu nombre, 'guest' o explora códigos."</span>
+                        </motion.div>
                         )}
                     </motion.div>
                     )}
                 </AnimatePresence>
+                )}
                 </div>
-            </div>
-            </form>
+            </>
         )}
-
-        {/* Footer / Hint */}
-        <div className="mt-8 md:mt-12 flex flex-col items-start gap-4 h-12">
-          {!isUnlocking && (
-             <AnimatePresence>
-             {showHintButton && (
-               <motion.div
-                 initial={{ opacity: 0 }}
-                 animate={{ opacity: 1 }}
-                 exit={{ opacity: 0 }}
-                 className="text-[10px] md:text-xs"
-               >
-                 {!hintRevealed ? (
-                   <button
-                     type="button"
-                     onClick={() => setHintRevealed(true)}
-                     className="text-zinc-800 hover:text-zinc-600 hover:bg-zinc-900 transition-colors px-1 -ml-1 border border-zinc-900 rounded"
-                   >
-                     [ --hint ]
-                   </button>
-                 ) : (
-                   <div className="flex flex-col gap-1 text-zinc-700">
-                     <span>{'>'} EXECUTE_HINT_PROTOCOL</span>
-                     <span className="text-zinc-500 italic">OUTPUT: "IDENTIDAD"</span>
-                   </div>
-                 )}
-               </motion.div>
-             )}
-           </AnimatePresence>
-          )}
-        </div>
 
       </div>
 
