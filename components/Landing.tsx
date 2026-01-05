@@ -45,6 +45,7 @@ const Landing: React.FC<LandingProps> = ({
   // Boot Sequence State
   const [isBooting, setIsBooting] = useState(true);
   const [bootLines, setBootLines] = useState<string[]>([]);
+  const [hasAudioStarted, setHasAudioStarted] = useState(false);
 
   // Hint State
   const [showHintButton, setShowHintButton] = useState(false);
@@ -67,21 +68,10 @@ const Landing: React.FC<LandingProps> = ({
   useFavicon('#000000');
 
   // ------------------------------------------------
-  // 1. BOOT SEQUENCE ANIMATION & AUDIO
+  // 1. BOOT SEQUENCE ANIMATION & AUDIO INIT
   // ------------------------------------------------
   useEffect(() => {
-    const playBootSound = async () => {
-        if (bootSfxRef.current && systemConfig.bootSfxUrl) {
-            bootSfxRef.current.volume = 0.4;
-            try {
-                await bootSfxRef.current.play();
-            } catch (e) {
-                console.log("Auto-play blocked, waiting for interaction");
-            }
-        }
-    };
-    playBootSound();
-
+    // Visual Boot Sequence
     const bootSequence = [
       { text: 'BIOS_INIT...', delay: 100 },
       { text: 'MEM_CHECK_64KB... OK', delay: 400 },
@@ -105,23 +95,66 @@ const Landing: React.FC<LandingProps> = ({
     }, 2800);
     timeouts.push(finishTimeout);
 
-    return () => timeouts.forEach(clearTimeout);
-  }, []);
-
-  // ------------------------------------------------
-  // 2. AMBIENT & OCCASIONAL NOISE LOGIC
-  // ------------------------------------------------
-  useEffect(() => {
-    if (!isBooting) {
-        if (ambientSfxRef.current && systemConfig.ambientSfxUrl) {
-            ambientSfxRef.current.volume = 0.05;
-            ambientSfxRef.current.play().catch(() => {});
+    // Audio Boot Attempt (Autoplay)
+    const attemptPlayBoot = async () => {
+        if (bootSfxRef.current && systemConfig.bootSfxUrl) {
+            bootSfxRef.current.volume = 0.3;
+            try {
+                await bootSfxRef.current.play();
+                setHasAudioStarted(true);
+            } catch (e) {
+                console.log("Autoplay blocked. Waiting for user interaction.");
+                // We don't force it here, we wait for the global click handler
+            }
         }
-    } else {
-        if (ambientSfxRef.current) ambientSfxRef.current.pause();
-    }
-  }, [isBooting, systemConfig.ambientSfxUrl]);
+    };
+    attemptPlayBoot();
 
+    return () => timeouts.forEach(clearTimeout);
+  }, []); // Only run once on mount
+
+  // ------------------------------------------------
+  // 2. AUDIO SEQUENCING & INTERACTIONS
+  // ------------------------------------------------
+
+  // Handle Boot Sound Ending -> Start Ambient
+  const handleBootEnded = () => {
+      if (ambientSfxRef.current && systemConfig.ambientSfxUrl && !isUnlocking) {
+          ambientSfxRef.current.volume = 0.02; // Very Low volume
+          ambientSfxRef.current.play().catch(e => console.error("Ambient play failed", e));
+      }
+  };
+
+  // Global Interaction Handler (Fixes Autoplay block)
+  useEffect(() => {
+    const handleGlobalClick = () => {
+        // 1. Focus Input
+        if (!isUnlocking && !isBooting) {
+            inputRef.current?.focus();
+        }
+
+        // 2. Retry Audio if it hasn't started yet
+        if (!hasAudioStarted && bootSfxRef.current && systemConfig.bootSfxUrl) {
+             bootSfxRef.current.volume = 0.3;
+             bootSfxRef.current.play()
+                .then(() => setHasAudioStarted(true))
+                .catch(() => {});
+        } 
+        // 3. If boot is already done but ambient is paused (e.g. tab switch), resume ambient
+        else if (hasAudioStarted && ambientSfxRef.current && ambientSfxRef.current.paused && systemConfig.ambientSfxUrl && !activeEasterEgg) {
+             ambientSfxRef.current.volume = 0.02;
+             ambientSfxRef.current.play().catch(() => {});
+        }
+    };
+
+    document.addEventListener('click', handleGlobalClick);
+    return () => document.removeEventListener('click', handleGlobalClick);
+  }, [isUnlocking, isBooting, hasAudioStarted, systemConfig, activeEasterEgg]);
+
+
+  // ------------------------------------------------
+  // 3. OCCASIONAL NOISE LOGIC
+  // ------------------------------------------------
   useEffect(() => {
     if (isBooting || isUnlocking || !systemConfig.occasionalSfxUrl) return;
 
@@ -144,28 +177,14 @@ const Landing: React.FC<LandingProps> = ({
     return () => clearTimeout(timeoutId);
   }, [isBooting, isUnlocking, systemConfig.occasionalSfxUrl]);
 
+  // Pause ambient on unlock or specific easter eggs
   useEffect(() => {
     if (isUnlocking && ambientSfxRef.current) {
         ambientSfxRef.current.pause();
     }
   }, [isUnlocking]);
 
-  // ------------------------------------------------
-  // 3. FOCUS & INTERACTION
-  // ------------------------------------------------
-  useEffect(() => {
-    const handleClick = () => {
-      if (!isUnlocking && !isBooting) {
-          inputRef.current?.focus();
-          if (ambientSfxRef.current && ambientSfxRef.current.paused && systemConfig.ambientSfxUrl) {
-             ambientSfxRef.current.play().catch(e => console.error(e));
-          }
-      }
-    };
-    document.addEventListener('click', handleClick);
-    return () => document.removeEventListener('click', handleClick);
-  }, [isUnlocking, isBooting, systemConfig.ambientSfxUrl]);
-
+  // Hint Timer
   useEffect(() => {
     if (!isBooting) {
       const timer = setTimeout(() => {
@@ -193,7 +212,8 @@ const Landing: React.FC<LandingProps> = ({
                 audioEggRef.current.removeAttribute('src');
             }
         }
-        if (!isUnlocking && !isBooting && ambientSfxRef.current && ambientSfxRef.current.paused && systemConfig.ambientSfxUrl) {
+        // Resume ambient if egg cleared
+        if (!isUnlocking && !isBooting && hasAudioStarted && ambientSfxRef.current && ambientSfxRef.current.paused && systemConfig.ambientSfxUrl) {
             ambientSfxRef.current.play().catch(() => {});
         }
     }
@@ -216,7 +236,7 @@ const Landing: React.FC<LandingProps> = ({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [activeEasterEgg, isBooting, isUnlocking, systemConfig.ambientSfxUrl]);
+  }, [activeEasterEgg, isBooting, isUnlocking, hasAudioStarted, systemConfig.ambientSfxUrl]);
 
   useEffect(() => {
     if (isUnlocking) {
@@ -364,7 +384,8 @@ const Landing: React.FC<LandingProps> = ({
 
       {/* Audio Elements */}
       <audio ref={audioEggRef} className="hidden" />
-      {systemConfig.bootSfxUrl && <audio ref={bootSfxRef} src={getAudioUrl(systemConfig.bootSfxUrl)} preload="auto" className="hidden" /> }
+      {/* Boot Audio: triggers ambient on end */}
+      {systemConfig.bootSfxUrl && <audio ref={bootSfxRef} src={getAudioUrl(systemConfig.bootSfxUrl)} preload="auto" className="hidden" onEnded={handleBootEnded} /> }
       {systemConfig.ambientSfxUrl && <audio ref={ambientSfxRef} src={getAudioUrl(systemConfig.ambientSfxUrl)} loop preload="auto" className="hidden" />}
       {systemConfig.beepSfxUrl && <audio ref={beepSfxRef} src={getAudioUrl(systemConfig.beepSfxUrl)} preload="auto" className="hidden" />}
       {systemConfig.occasionalSfxUrl && <audio ref={occasionalSfxRef} src={getAudioUrl(systemConfig.occasionalSfxUrl)} preload="auto" className="hidden" />}
