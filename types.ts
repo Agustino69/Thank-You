@@ -28,7 +28,8 @@ export interface Person {
 
 export interface SystemConfig {
   bootSfxUrl: string;
-  ambientSfxUrl: string;
+  ambientSfxUrl: string; // Computer/Fan Hum (Active only when powered on)
+  roomSfxUrl?: string; // NEW: Room Ambience (Active always after interaction)
   beepSfxUrl?: string; // Keystroke or action beep
   occasionalSfxUrl?: string; // Random glitch or processing sound
   bgmVolume?: number; // Global volume modifier if needed later

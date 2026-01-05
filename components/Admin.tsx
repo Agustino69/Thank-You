@@ -332,13 +332,25 @@ export const INITIAL_PEOPLE: Person[] = ${JSON.stringify(people, null, 2)};
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold uppercase text-gray-500 mb-2">Ruta Ambiente</label>
+                            <label className="block text-xs font-bold uppercase text-gray-500 mb-2">Ruta Ambiente Terminal (Hum)</label>
                             <input 
                                 type="text"
                                 value={systemConfig.ambientSfxUrl}
                                 onChange={(e) => handleUpdateSystem('ambientSfxUrl', e.target.value)}
                                 className="w-full p-2 border border-gray-300 rounded focus:border-blue-500 outline-none font-mono text-xs bg-gray-50"
                             />
+                            <p className="text-[10px] text-gray-400 mt-1">Este sonido solo se escucha cuando el terminal está ENCENDIDO.</p>
+                        </div>
+                        
+                        <div>
+                            <label className="block text-xs font-bold uppercase text-gray-500 mb-2">Ruta Ambiente Habitación (Room)</label>
+                            <input 
+                                type="text"
+                                value={systemConfig.roomSfxUrl || ''}
+                                onChange={(e) => handleUpdateSystem('roomSfxUrl', e.target.value)}
+                                className="w-full p-2 border border-gray-300 rounded focus:border-blue-500 outline-none font-mono text-xs bg-gray-50"
+                            />
+                            <p className="text-[10px] text-gray-400 mt-1">Este sonido siempre suena (independiente del Power) tras el primer clic.</p>
                         </div>
                     </div>
 

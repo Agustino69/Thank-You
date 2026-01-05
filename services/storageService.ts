@@ -48,7 +48,8 @@ export const getSystemConfig = (): SystemConfig => {
   try {
     const stored = localStorage.getItem(CONFIG_KEY);
     if (stored) {
-      return JSON.parse(stored);
+      // Merge with default to ensure new fields (like roomSfxUrl) appear even if not in localStorage
+      return { ...DEFAULT_SYSTEM_CONFIG, ...JSON.parse(stored) };
     }
     return DEFAULT_SYSTEM_CONFIG;
   } catch (e) {

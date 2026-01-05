@@ -5,6 +5,7 @@ export const ADMIN_CODE = 'admin4126';
 export const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
   bootSfxUrl: '/sfx/boot.mp3', // Local file in public/sfx/boot.mp3
   ambientSfxUrl: '/sfx/ambient.mp3', // Local file in public/sfx/ambient.mp3
+  roomSfxUrl: '/sfx/room.mp3', // NEW: Local file in public/sfx/room.mp3
   beepSfxUrl: '/sfx/beep.mp3', // Local file in public/sfx/beep.mp3
   occasionalSfxUrl: '/sfx/glitch.mp3' // Local file in public/sfx/glitch.mp3
 };
