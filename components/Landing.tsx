@@ -161,7 +161,12 @@ const Landing: React.FC<LandingProps> = ({
     } else {
         if(audioEggRef.current) {
             audioEggRef.current.pause();
-            audioEggRef.current.src = "";
+            audioEggRef.current.currentTime = 0;
+            // Clear source properly to avoid "no supported sources" error
+            if (audioEggRef.current.getAttribute('src')) {
+                audioEggRef.current.removeAttribute('src');
+                audioEggRef.current.load();
+            }
         }
         // Resume ambient if we are just sitting there (not unlocking)
         if (!isUnlocking && !isBooting && ambientSfxRef.current && ambientSfxRef.current.paused) {
@@ -241,6 +246,7 @@ const Landing: React.FC<LandingProps> = ({
       exit={{ opacity: 0, transition: { duration: 1.5 } }} 
       className="h-[100dvh] w-screen bg-black flex flex-col items-center justify-center text-zinc-400 font-mono text-sm selection:bg-zinc-800 selection:text-zinc-200 relative overflow-hidden"
     >
+      {/* Audio elements are rendered but src is managed manually via refs to avoid empty src errors */}
       <audio ref={audioEggRef} className="hidden" />
       {/* Boot Sound: Computer Startup / Spin up */}
       <audio ref={bootSfxRef} src="https://cdn.pixabay.com/audio/2022/10/21/audio_3497d51928.mp3" preload="auto" className="hidden" />
