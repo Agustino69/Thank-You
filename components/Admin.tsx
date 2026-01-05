@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Person, EasterEgg, EasterEggType, SystemConfig } from '../types';
-import { Plus, Trash2, X, Copy, Check, HelpCircle, Code, Volume2, Gamepad2, Calendar, Layout, Image as ImageIcon, Youtube, Music, List, Mic, Settings, HardDrive, Keyboard, Sparkles, Eye } from 'lucide-react';
+import { Plus, Trash2, X, Download, Check, HelpCircle, Code, Volume2, Gamepad2, Calendar, Layout, Image as ImageIcon, Youtube, Music, List, Mic, Settings, HardDrive, Keyboard, Sparkles, Eye } from 'lucide-react';
 import { useFavicon } from '../hooks/useFavicon';
 import Content from './Content';
+import { ADMIN_CODE } from '../constants';
 
 // Simple ID generator replacement
 const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -30,7 +31,6 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, initialSystemConfig, onSav
   const [systemConfig, setSystemConfig] = useState<SystemConfig>(initialSystemConfig);
   
   // UI State
-  const [hasCopied, setHasCopied] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false); // New Preview State
   
@@ -154,12 +154,27 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, initialSystemConfig, onSav
   };
 
   // -------------------------
-  // EXPORT
+  // EXPORT / DOWNLOAD
   // -------------------------
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(JSON.stringify(people, null, 2));
-    setHasCopied(true);
-    setTimeout(() => setHasCopied(false), 2000);
+  const downloadConstantsFile = () => {
+    const fileContent = `import { Person, SystemConfig } from './types';
+
+export const ADMIN_CODE = '${ADMIN_CODE}';
+
+export const DEFAULT_SYSTEM_CONFIG: SystemConfig = ${JSON.stringify(systemConfig, null, 2)};
+
+export const INITIAL_PEOPLE: Person[] = ${JSON.stringify(people, null, 2)};
+`;
+
+    const blob = new Blob([fileContent], { type: 'text/typescript' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'constants.ts';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   // Helper for Drive Images Preview
@@ -222,10 +237,10 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, initialSystemConfig, onSav
               </p>
               <ol className="list-decimal pl-4 space-y-2">
                 <li>Edita perfiles y usa "Vista Previa" para verificar.</li>
-                <li>Presiona el botón negro <strong>EXPORTAR JSON</strong> (abajo izquierda).</li>
-                <li>Abre el archivo <code>constants.ts</code> en tu editor de código.</li>
-                <li>Reemplaza el contenido de <code>INITIAL_PEOPLE</code> con lo que copiaste.</li>
+                <li>Presiona el botón negro <strong>DESCARGAR CONSTANTS.TS</strong> (abajo izquierda).</li>
+                <li>En tu proyecto, reemplaza el archivo <code>constants.ts</code> original por el que acabas de descargar.</li>
                 <li>Sube tu código (Deploy) para que los cambios sean públicos y permanentes.</li>
+                <li><strong>Nota Audio:</strong> Asegúrate de que los archivos <code>boot.mp3</code>, <code>ambient.mp3</code>, <code>beep.mp3</code> y <code>glitch.mp3</code> existan en la carpeta <code>public/sfx/</code>.</li>
               </ol>
             </div>
           </div>
@@ -299,31 +314,31 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, initialSystemConfig, onSav
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-6">
                         <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-100">
                             <HardDrive size={18} className="text-zinc-600" />
-                            <h3 className="font-bold uppercase text-xs text-zinc-500">Audio del Landing (Arranque)</h3>
+                            <h3 className="font-bold uppercase text-xs text-zinc-500">Audio del Landing (Local)</h3>
                         </div>
                         
+                        <div className="text-xs text-gray-500 bg-blue-50 p-4 rounded border border-blue-100 mb-4">
+                            Los sonidos ahora cargan desde la carpeta <code>/public/sfx/</code>. Si deseas cambiarlos, reemplaza los archivos físicos en tu proyecto en lugar de cambiar las rutas aquí.
+                        </div>
+
                         <div>
-                            <label className="block text-xs font-bold uppercase text-gray-500 mb-2">Sonido de Boot (Inicio)</label>
+                            <label className="block text-xs font-bold uppercase text-gray-500 mb-2">Ruta Boot</label>
                             <input 
                                 type="text"
                                 value={systemConfig.bootSfxUrl}
                                 onChange={(e) => handleUpdateSystem('bootSfxUrl', e.target.value)}
-                                placeholder="https://..."
-                                className="w-full p-2 border border-gray-300 rounded focus:border-blue-500 outline-none font-mono text-xs"
+                                className="w-full p-2 border border-gray-300 rounded focus:border-blue-500 outline-none font-mono text-xs bg-gray-50"
                             />
-                            <p className="text-[10px] text-gray-400 mt-1">Sonido corto de disco duro iniciando.</p>
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold uppercase text-gray-500 mb-2">Sonido Ambiental (Loop)</label>
+                            <label className="block text-xs font-bold uppercase text-gray-500 mb-2">Ruta Ambiente</label>
                             <input 
                                 type="text"
                                 value={systemConfig.ambientSfxUrl}
                                 onChange={(e) => handleUpdateSystem('ambientSfxUrl', e.target.value)}
-                                placeholder="https://..."
-                                className="w-full p-2 border border-gray-300 rounded focus:border-blue-500 outline-none font-mono text-xs"
+                                className="w-full p-2 border border-gray-300 rounded focus:border-blue-500 outline-none font-mono text-xs bg-gray-50"
                             />
-                             <p className="text-[10px] text-gray-400 mt-1">Sonido de fondo constante (ventiladores, zumbido).</p>
                         </div>
                     </div>
 
@@ -335,30 +350,26 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, initialSystemConfig, onSav
                         
                         <div>
                             <label className="block text-xs font-bold uppercase text-gray-500 mb-2 flex items-center gap-2">
-                                <Keyboard size={14} /> Beep al Escribir
+                                <Keyboard size={14} /> Ruta Beep
                             </label>
                             <input 
                                 type="text"
                                 value={systemConfig.beepSfxUrl || ''}
                                 onChange={(e) => handleUpdateSystem('beepSfxUrl', e.target.value)}
-                                placeholder="https://..."
-                                className="w-full p-2 border border-gray-300 rounded focus:border-blue-500 outline-none font-mono text-xs"
+                                className="w-full p-2 border border-gray-300 rounded focus:border-blue-500 outline-none font-mono text-xs bg-gray-50"
                             />
-                            <p className="text-[10px] text-gray-400 mt-1">Sonido breve al presionar teclas. Compatible con Google Drive.</p>
                         </div>
 
                         <div>
                             <label className="block text-xs font-bold uppercase text-gray-500 mb-2 flex items-center gap-2">
-                                <Sparkles size={14} /> Ruido Ocasional (Random)
+                                <Sparkles size={14} /> Ruta Glitch
                             </label>
                             <input 
                                 type="text"
                                 value={systemConfig.occasionalSfxUrl || ''}
                                 onChange={(e) => handleUpdateSystem('occasionalSfxUrl', e.target.value)}
-                                placeholder="https://..."
-                                className="w-full p-2 border border-gray-300 rounded focus:border-blue-500 outline-none font-mono text-xs"
+                                className="w-full p-2 border border-gray-300 rounded focus:border-blue-500 outline-none font-mono text-xs bg-gray-50"
                             />
-                             <p className="text-[10px] text-gray-400 mt-1">Sonido que se reproduce aleatoriamente (8-20s) en el landing (glitch, estática).</p>
                         </div>
                     </div>
                  </div>
@@ -723,11 +734,11 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, initialSystemConfig, onSav
              {mode === 'PROFILES' && (
                  <>
                     <button 
-                        onClick={copyToClipboard}
+                        onClick={downloadConstantsFile}
                         className="flex items-center gap-2 bg-zinc-900 text-white px-6 py-2 rounded hover:bg-zinc-700 transition-colors shadow-lg"
                         >
-                        {hasCopied ? <Check size={16} className="text-green-500"/> : <Copy size={16} />}
-                        <span className="text-xs font-bold uppercase">{hasCopied ? 'Copiado' : 'Exportar JSON'}</span>
+                        <Download size={16} />
+                        <span className="text-xs font-bold uppercase">Descargar constants.ts</span>
                     </button>
                     
                     {/* Preview Button */}

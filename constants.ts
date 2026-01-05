@@ -3,10 +3,10 @@ import { Person, SystemConfig } from './types';
 export const ADMIN_CODE = 'admin4126';
 
 export const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
-  bootSfxUrl: 'https://cdn.pixabay.com/audio/2022/10/21/audio_3497d51928.mp3', // HDD Spin up
-  ambientSfxUrl: 'https://cdn.pixabay.com/audio/2022/03/15/audio_b0445a606f.mp3', // HDD Hum/Clicks
-  beepSfxUrl: 'https://cdn.pixabay.com/download/audio/2022/03/24/audio_82ccc5c65b.mp3?filename=retro-computer-typing-sound-113589.mp3', // Key press beep
-  occasionalSfxUrl: 'https://cdn.pixabay.com/download/audio/2022/03/10/audio_c39b75225c.mp3?filename=glitch-bass-noise-104938.mp3' // Occasional glitch/processing
+  bootSfxUrl: '/sfx/boot.mp3', // Local file in public/sfx/boot.mp3
+  ambientSfxUrl: '/sfx/ambient.mp3', // Local file in public/sfx/ambient.mp3
+  beepSfxUrl: '/sfx/beep.mp3', // Local file in public/sfx/beep.mp3
+  occasionalSfxUrl: '/sfx/glitch.mp3' // Local file in public/sfx/glitch.mp3
 };
 
 export const INITIAL_PEOPLE: Person[] = [
