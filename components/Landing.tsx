@@ -9,7 +9,6 @@ interface LandingProps {
   onTransitionComplete: () => void;
   error?: boolean;
   activeEasterEgg?: EasterEgg | null;
-  systemLogs?: string[];
   onClearError?: () => void;
   transitionColor?: string;
   systemConfig: SystemConfig;
@@ -38,7 +37,6 @@ const Landing: React.FC<LandingProps> = ({
   onTransitionComplete, 
   error = false, 
   activeEasterEgg,
-  systemLogs,
   onClearError,
   transitionColor = '#F9F7F0',
   systemConfig
@@ -210,7 +208,6 @@ const Landing: React.FC<LandingProps> = ({
             if (audioEggRef.current.getAttribute('src')) {
                 audioEggRef.current.removeAttribute('src');
                 // Removing load() call to prevent "The element has no supported sources" error
-                // audioEggRef.current.load(); 
             }
         }
         // Resume ambient
@@ -279,7 +276,7 @@ const Landing: React.FC<LandingProps> = ({
         beepSfxRef.current.play().catch(() => {});
     }
 
-    if ((error || activeEasterEgg || systemLogs) && onClearError) {
+    if ((error || activeEasterEgg) && onClearError) {
       onClearError();
     }
   };
@@ -355,41 +352,17 @@ const Landing: React.FC<LandingProps> = ({
             </div>
         ) : (
             <>
-                {/* Header / System Status / Changelog View */}
+                {/* Header / System Status */}
                 <motion.div 
                     initial={{ opacity: 0 }} 
                     animate={{ opacity: 1 }} 
                     className="flex flex-col gap-1 text-[10px] md:text-xs mb-4 md:mb-8 min-h-[5rem]"
                 >
-                {systemLogs ? (
-                    <div className="flex flex-col gap-1.5 border-l-2 border-zinc-800 pl-3 py-1">
-                        {systemLogs.map((log, idx) => (
-                            <motion.div 
-                                key={idx}
-                                initial={{ opacity: 0, x: -5 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: idx * 0.1 }}
-                                className="text-emerald-500/80"
-                            >
-                                {log}
-                            </motion.div>
-                        ))}
-                        <motion.div 
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: systemLogs.length * 0.1 }}
-                            className="text-zinc-600 mt-2"
-                        >
-                            &gt; END_OF_LOG
-                        </motion.div>
-                    </div>
-                ) : (
                     <div className="opacity-50">
                         <p>ARCHIVE_SYS v.1.7.0</p>
                         <p>STATUS: {isUnlocking ? 'UNLOCKING...' : 'LOCKED'}</p>
                         <p>.....................</p>
                     </div>
-                )}
                 </motion.div>
 
                 {/* Unlocking Logs View */}

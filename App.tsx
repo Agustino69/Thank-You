@@ -4,7 +4,7 @@ import Landing from './components/Landing';
 import Content from './components/Content';
 import Admin from './components/Admin';
 import { Person, ViewState, EasterEgg, SystemConfig } from './types';
-import { ADMIN_CODE, PROJECT_LOGS, DEFAULT_SYSTEM_CONFIG } from './constants';
+import { ADMIN_CODE, DEFAULT_SYSTEM_CONFIG } from './constants';
 import { getPeople, savePeople, getSystemConfig, saveSystemConfig } from './services/storageService';
 
 const App: React.FC = () => {
@@ -15,7 +15,6 @@ const App: React.FC = () => {
   
   const [loginError, setLoginError] = useState(false);
   const [activeEasterEgg, setActiveEasterEgg] = useState<EasterEgg | null>(null);
-  const [showChangelog, setShowChangelog] = useState(false);
   
   // New state for transition animation
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -29,13 +28,6 @@ const App: React.FC = () => {
     // Reset previous states
     setActiveEasterEgg(null);
     setLoginError(false);
-    setShowChangelog(false);
-
-    // Check for logs command
-    if (code === 'logs') {
-        setShowChangelog(true);
-        return;
-    }
 
     // Check for admin code
     if (code === ADMIN_CODE) {
@@ -105,7 +97,6 @@ const App: React.FC = () => {
     setActivePerson(null);
     setView('LANDING');
     setActiveEasterEgg(null);
-    setShowChangelog(false);
   };
 
   return (
@@ -119,11 +110,9 @@ const App: React.FC = () => {
             onTransitionComplete={handleTransitionComplete}
             error={loginError}
             activeEasterEgg={activeEasterEgg}
-            systemLogs={showChangelog ? PROJECT_LOGS : undefined}
             onClearError={() => { 
                 setLoginError(false); 
                 setActiveEasterEgg(null); 
-                setShowChangelog(false);
             }}
             transitionColor={activePerson?.themeColor}
             systemConfig={systemConfig}
