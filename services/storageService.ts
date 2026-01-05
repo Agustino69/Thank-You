@@ -8,16 +8,23 @@ export const getPeople = (): Person[] => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      // Migration logic: Ensure all records have accessKeys
-      // If legacy 'name' exists but 'accessKeys' doesn't, migrate it.
+      // Migration logic: 
+      // 1. Ensure all records have accessKeys
+      // 2. Migrate single videoUrl to videoUrls array
       return parsed.map((p: any) => {
-        if (!p.accessKeys) {
-          return {
-            ...p,
-            accessKeys: p.name ? [p.name] : []
-          };
+        let updated = { ...p };
+
+        // Access Keys Migration
+        if (!updated.accessKeys) {
+            updated.accessKeys = updated.name ? [updated.name] : [];
         }
-        return p;
+
+        // Video URL Migration
+        if (updated.videoUrl && (!updated.videoUrls || updated.videoUrls.length === 0)) {
+            updated.videoUrls = [updated.videoUrl];
+        }
+        
+        return updated;
       });
     }
     return INITIAL_PEOPLE;

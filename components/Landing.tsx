@@ -8,7 +8,8 @@ interface LandingProps {
   isUnlocking: boolean;
   onTransitionComplete: () => void;
   error?: boolean;
-  activeEasterEgg?: EasterEgg | null; // Changed from systemMessage string to full object
+  activeEasterEgg?: EasterEgg | null;
+  systemLogs?: string[];
   onClearError?: () => void;
   transitionColor?: string;
 }
@@ -19,6 +20,7 @@ const Landing: React.FC<LandingProps> = ({
   onTransitionComplete, 
   error = false, 
   activeEasterEgg,
+  systemLogs,
   onClearError,
   transitionColor = '#F9F7F0' 
 }) => {
@@ -31,6 +33,7 @@ const Landing: React.FC<LandingProps> = ({
   const [timeLeft, setTimeLeft] = useState<string>('');
   
   const inputRef = useRef<HTMLInputElement>(null);
+  const audioEggRef = useRef<HTMLAudioElement>(null);
 
   // Set Favicon to dark zinc for Landing
   useFavicon('#27272a');
@@ -51,8 +54,22 @@ const Landing: React.FC<LandingProps> = ({
     return () => clearTimeout(timer);
   }, []);
 
-  // Handle Countdown Logic
+  // Handle Countdown Logic and Audio Playback
   useEffect(() => {
+    // 1. Handle Audio Egg
+    if (activeEasterEgg && activeEasterEgg.type === 'audio' && activeEasterEgg.response) {
+        if (audioEggRef.current) {
+            audioEggRef.current.src = activeEasterEgg.response;
+            audioEggRef.current.play().catch(e => console.error("Audio playback failed", e));
+        }
+    } else {
+        if(audioEggRef.current) {
+            audioEggRef.current.pause();
+            audioEggRef.current.src = "";
+        }
+    }
+
+    // 2. Handle Countdown Egg
     if (!activeEasterEgg || activeEasterEgg.type !== 'countdown' || !activeEasterEgg.date) return;
 
     const interval = setInterval(() => {
@@ -104,7 +121,8 @@ const Landing: React.FC<LandingProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);
-    if ((error || activeEasterEgg) && onClearError) {
+    // Clear any errors or system displays when user starts typing again
+    if ((error || activeEasterEgg || systemLogs) && onClearError) {
       onClearError();
     }
   };
@@ -116,6 +134,8 @@ const Landing: React.FC<LandingProps> = ({
       exit={{ opacity: 0, transition: { duration: 1.5 } }} 
       className="h-[100dvh] w-screen bg-black flex flex-col items-center justify-center text-zinc-400 font-mono text-sm selection:bg-zinc-800 selection:text-zinc-200 relative overflow-hidden"
     >
+      <audio ref={audioEggRef} className="hidden" />
+
       {/* FADE OVERLAY TRANSITION */}
       <AnimatePresence>
         {isUnlocking && logs.length >= 4 && (
@@ -131,11 +151,37 @@ const Landing: React.FC<LandingProps> = ({
 
       <div className="w-full max-w-lg px-6 flex flex-col gap-4 md:gap-6 relative z-10 -mt-12 md:mt-0">
         
-        {/* Header / System Status */}
-        <div className="flex flex-col gap-1 opacity-50 text-[10px] md:text-xs mb-4 md:mb-8">
-          <p>ARCHIVE_SYS v.1.0.4</p>
-          <p>STATUS: {isUnlocking ? 'UNLOCKING...' : 'LOCKED'}</p>
-          <p>.....................</p>
+        {/* Header / System Status / Changelog View */}
+        <div className="flex flex-col gap-1 text-[10px] md:text-xs mb-4 md:mb-8 min-h-[5rem]">
+          {systemLogs ? (
+             <div className="flex flex-col gap-1.5 border-l-2 border-zinc-800 pl-3 py-1">
+                {systemLogs.map((log, idx) => (
+                    <motion.div 
+                        key={idx}
+                        initial={{ opacity: 0, x: -5 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.1 }}
+                        className="text-emerald-500/80"
+                    >
+                        {log}
+                    </motion.div>
+                ))}
+                <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: systemLogs.length * 0.1 }}
+                    className="text-zinc-600 mt-2"
+                >
+                    &gt; END_OF_LOG
+                </motion.div>
+             </div>
+          ) : (
+             <div className="opacity-50">
+                <p>ARCHIVE_SYS v.1.5.1</p>
+                <p>STATUS: {isUnlocking ? 'UNLOCKING...' : 'LOCKED'}</p>
+                <p>.....................</p>
+             </div>
+          )}
         </div>
 
         {/* Unlocking Logs View */}
@@ -217,6 +263,8 @@ const Landing: React.FC<LandingProps> = ({
                                 <span className="uppercase tracking-widest">{`> TARGET: "${activeEasterEgg.response}"`}</span>
                                 <span className="text-zinc-200 font-bold tracking-widest text-xs md:text-sm">{timeLeft}</span>
                             </>
+                        ) : activeEasterEgg.type === 'audio' ? (
+                            <span className="uppercase tracking-widest animate-pulse">{`> PLAYING_AUDIO_STREAM...`}</span>
                         ) : (
                             <span>{`> SYSTEM_RESPONSE: "${activeEasterEgg.response}"`}</span>
                         )}

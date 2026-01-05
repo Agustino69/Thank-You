@@ -17,7 +17,7 @@ const hexToRgb = (hex: string) => {
         : '74, 70, 62'; // Fallback
 };
 
-// Helper to detect Google Photos links (Must remain external due to CORS/Security)
+// Helper to detect Google Photos links
 const isGooglePhotosLink = (url: string) => {
   return url.includes('photos.app.goo.gl') || url.includes('photos.google.com');
 };
@@ -31,6 +31,13 @@ const isGoogleDriveLink = (url: string) => {
 const getGoogleDriveId = (url: string) => {
   const matches = url.match(/\/d\/(.+?)(\/|$)/) || url.match(/id=(.+?)(\&|$)/);
   return matches ? matches[1] : null;
+};
+
+// Extract Youtube ID
+const getYoutubeId = (url: string) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
 };
 
 const Content: React.FC<ContentProps> = ({ person, onExit }) => {
@@ -54,12 +61,19 @@ const Content: React.FC<ContentProps> = ({ person, onExit }) => {
   const [isPlayerOpen, setIsPlayerOpen] = useState(false); // Initially closed
   const [shouldShake, setShouldShake] = useState(false); // State for attention grabbing
 
+  // Consolidate videos into an array (backward compatibility)
+  const videos = useMemo(() => {
+    if (person.videoUrls && person.videoUrls.length > 0) return person.videoUrls.filter(Boolean);
+    if (person.videoUrl) return [person.videoUrl];
+    return [];
+  }, [person]);
+
   // Define available sections dynamically
   const sections = [
     { id: 'intro', label: 'Inicio', ref: introRef, exists: true },
     { id: 'message', label: 'Mensaje', ref: messageRef, exists: true },
     { id: 'gallery', label: 'Recuerdos', ref: galleryRef, exists: person.images && person.images.length > 0 },
-    { id: 'video', label: 'Video', ref: videoRef, exists: !!person.videoUrl },
+    { id: 'video', label: 'Video', ref: videoRef, exists: videos.length > 0 },
   ].filter(s => s.exists);
 
   const lastSectionId = sections[sections.length - 1]?.id;
@@ -122,18 +136,6 @@ const Content: React.FC<ContentProps> = ({ person, onExit }) => {
 
   const scrollToSection = (ref: React.RefObject<HTMLElement>) => {
     ref.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const isYoutube = person.videoUrl?.includes('youtube.com') || person.videoUrl?.includes('youtu.be');
-  const isGooglePhotosVideo = person.videoUrl ? isGooglePhotosLink(person.videoUrl) : false;
-  // We treat Drive as embeddable if we can extract an ID
-  const driveVideoId = person.videoUrl && isGoogleDriveLink(person.videoUrl) ? getGoogleDriveId(person.videoUrl) : null;
-  const isDriveVideo = !!driveVideoId;
-
-  const getYoutubeId = (url: string) => {
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-    const match = url.match(regExp);
-    return (match && match[2].length === 11) ? match[2] : null;
   };
 
   // Helper to convert regular Spotify links to Embed links
@@ -318,67 +320,78 @@ const Content: React.FC<ContentProps> = ({ person, onExit }) => {
           </section>
         )}
 
-        {/* SECTION 4: VIDEO */}
-        {person.videoUrl && (
+        {/* SECTION 4: VIDEO (Supports Multiple) */}
+        {videos.length > 0 && (
           <section 
             id="video" 
             ref={videoRef} 
-            className="min-h-screen w-full flex flex-col items-center justify-center p-8 snap-start"
+            className="min-h-screen w-full flex flex-col items-center justify-center p-8 snap-start space-y-20"
           >
-             <h2 
-                className="text-2xl font-serif italic mb-8 opacity-70"
-                style={{ color: themeColor }}
-             >
-                Un momento
-             </h2>
-             <motion.div 
-               initial={{ opacity: 0, scale: 0.95 }}
-               whileInView={{ opacity: 1, scale: 1 }}
-               transition={{ duration: 0.8 }}
-               className="w-full max-w-4xl relative aspect-video shadow-xl overflow-hidden"
-               style={{ backgroundColor: `rgba(${themeRgb}, 0.1)` }}
-             >
-                {isYoutube ? (
-                  <iframe
-                    className="absolute inset-0 w-full h-full"
-                    src={`https://www.youtube.com/embed/${getYoutubeId(person.videoUrl)}?controls=0&rel=0&modestbranding=1`}
-                    title="Video Player"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                ) : isDriveVideo ? (
-                  <iframe
-                    className="absolute inset-0 w-full h-full"
-                    src={`https://drive.google.com/file/d/${driveVideoId}/preview`}
-                    title="Google Drive Video"
-                    allow="autoplay; encrypted-media"
-                    allowFullScreen
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <a 
-                      href={person.videoUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex flex-col items-center gap-4 hover:scale-105 transition-transform duration-500"
-                    >
-                      <div 
-                        className="w-20 h-20 rounded-full border-2 flex items-center justify-center"
-                        style={{ borderColor: themeColor }}
-                      >
-                         {isGooglePhotosVideo ? (
-                             <ImageIcon size={32} strokeWidth={1.5} color={themeColor} />
-                         ) : (
-                             <Play size={32} fill={themeColor} color={themeColor} className="ml-1" />
-                         )}
-                      </div>
-                      <span className="font-serif italic" style={{ color: themeColor }}>
-                        {isGooglePhotosVideo ? 'Ver en Google Photos' : 'Ver externo'}
-                      </span>
-                    </a>
-                  </div>
-                )}
-             </motion.div>
+             {videos.map((vidUrl, idx) => {
+                 const isYoutube = vidUrl?.includes('youtube.com') || vidUrl?.includes('youtu.be');
+                 const isGooglePhotosVideo = isGooglePhotosLink(vidUrl);
+                 const driveVideoId = isGoogleDriveLink(vidUrl) ? getGoogleDriveId(vidUrl) : null;
+                 const isDriveVideo = !!driveVideoId;
+
+                 return (
+                    <div key={idx} className="w-full flex flex-col items-center">
+                        <h2 
+                            className="text-2xl font-serif italic mb-8 opacity-70"
+                            style={{ color: themeColor }}
+                        >
+                            {videos.length > 1 ? `Momento ${idx + 1}` : 'Un momento'}
+                        </h2>
+                        <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        whileInView={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.8 }}
+                        className="w-full max-w-4xl relative aspect-video shadow-xl overflow-hidden"
+                        style={{ backgroundColor: `rgba(${themeRgb}, 0.1)` }}
+                        >
+                            {isYoutube ? (
+                            <iframe
+                                className="absolute inset-0 w-full h-full"
+                                src={`https://www.youtube.com/embed/${getYoutubeId(vidUrl)}?controls=0&rel=0&modestbranding=1`}
+                                title={`Video Player ${idx}`}
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                            />
+                            ) : isDriveVideo ? (
+                            <iframe
+                                className="absolute inset-0 w-full h-full"
+                                src={`https://drive.google.com/file/d/${driveVideoId}/preview`}
+                                title={`Google Drive Video ${idx}`}
+                                allow="autoplay; encrypted-media"
+                                allowFullScreen
+                            />
+                            ) : (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <a 
+                                href={vidUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="flex flex-col items-center gap-4 hover:scale-105 transition-transform duration-500"
+                                >
+                                <div 
+                                    className="w-20 h-20 rounded-full border-2 flex items-center justify-center"
+                                    style={{ borderColor: themeColor }}
+                                >
+                                    {isGooglePhotosVideo ? (
+                                        <ImageIcon size={32} strokeWidth={1.5} color={themeColor} />
+                                    ) : (
+                                        <Play size={32} fill={themeColor} color={themeColor} className="ml-1" />
+                                    )}
+                                </div>
+                                <span className="font-serif italic" style={{ color: themeColor }}>
+                                    {isGooglePhotosVideo ? 'Ver en Google Photos' : 'Ver externo'}
+                                </span>
+                                </a>
+                            </div>
+                            )}
+                        </motion.div>
+                    </div>
+                 )
+             })}
              
              <footer className="mt-20 opacity-40 font-serif italic text-sm">
                 Con aprecio, Agus.
