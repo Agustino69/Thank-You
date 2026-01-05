@@ -225,5 +225,220 @@ export const INITIAL_PEOPLE: Person[] = [
     "videoUrls": [
       "https://drive.google.com/file/d/1fpP6x4Do0JDAzi60-79xGwuas_BSqxUl/view?usp=drive_link"
     ]
+  },
+{
+    "id": "emi_socio_01",
+    "accessKeys": [
+      "socio",
+      "emi",
+      "mamahuevo"
+    ],
+    "displayName": "Emi",
+    "message": "Escribe tu mensaje aquí...",
+    "images": [],
+    "videoUrl": "",
+    "spotifyUrl": "",
+    "spotifyMessage": "",
+    "themeColor": "#0052cc", // Azul
+    "easterEggs": [],
+    "bgmUrl": "https://archive.org/download/Bandcamp-63012668/63012668.mp3",
+    "bgmVolume": 0.1
+  },
+  {
+    "id": "mario_gulf_02",
+    "accessKeys": [
+      "mario",
+      "papalote"
+    ],
+    "displayName": "Mario",
+    "message": "Escribe tu mensaje aquí...",
+    "images": [],
+    "videoUrl": "",
+    "spotifyUrl": "",
+    "spotifyMessage": "",
+    "themeColor": "#bad9f0", // Azul Gulf (aprox)
+    "easterEggs": [],
+    "bgmUrl": "https://archive.org/download/Bandcamp-63012668/63012668.mp3",
+    "bgmVolume": 0.1
+  },
+  {
+    "id": "vane_rosa_03",
+    "accessKeys": [
+      "vane",
+      "vanessa",
+      "cachirula"
+    ],
+    "displayName": "Vane",
+    "message": "Escribe tu mensaje aquí...",
+    "images": [],
+    "videoUrl": "",
+    "spotifyUrl": "",
+    "spotifyMessage": "",
+    "themeColor": "#ffb6c1", // Rosa claro
+    "easterEggs": [],
+    "bgmUrl": "https://archive.org/download/Bandcamp-63012668/63012668.mp3",
+    "bgmVolume": 0.1
+  },
+  {
+    "id": "bruno_grn_04",
+    "accessKeys": [
+      "bruno",
+      "bruninho",
+      "bruce"
+    ],
+    "displayName": "Bruno",
+    "message": "Escribe tu mensaje aquí...",
+    "images": [],
+    "videoUrl": "",
+    "spotifyUrl": "",
+    "spotifyMessage": "",
+    "themeColor": "#2ecc71", // Verde
+    "easterEggs": [],
+    "bgmUrl": "https://archive.org/download/Bandcamp-63012668/63012668.mp3",
+    "bgmVolume": 0.1
+  },
+  {
+    "id": "ale_sky_05",
+    "accessKeys": [
+      "ale",
+      "alessandra"
+    ],
+    "displayName": "Ale",
+    "message": "Escribe tu mensaje aquí...",
+    "images": [],
+    "videoUrl": "",
+    "spotifyUrl": "",
+    "spotifyMessage": "",
+    "themeColor": "#87ceeb", // Azul cielo
+    "easterEggs": [],
+    "bgmUrl": "https://archive.org/download/Bandcamp-63012668/63012668.mp3",
+    "bgmVolume": 0.1
+  },
+  {
+    "id": "pau_pink_06",
+    "accessKeys": [
+      "pau",
+      "pao",
+      "paulina",
+      "paolina"
+    ],
+    "displayName": "Pau",
+    "message": "Escribe tu mensaje aquí...",
+    "images": [],
+    "videoUrl": "",
+    "spotifyUrl": "",
+    "spotifyMessage": "",
+    "themeColor": "#ff1493", // Rosa intenso
+    "easterEggs": [],
+    "bgmUrl": "https://archive.org/download/Bandcamp-63012668/63012668.mp3",
+    "bgmVolume": 0.1
+  },
+  {
+    "id": "sil_cld_07",
+    "accessKeys": [
+      "silvana",
+      "sil",
+      "silv"
+    ],
+    "displayName": "Silvana",
+    "message": "Escribe tu mensaje aquí...",
+    "images": [],
+    "videoUrl": "",
+    "spotifyUrl": "",
+    "spotifyMessage": "",
+    "themeColor": "#b0e0e6", // Azul nube
+    "easterEggs": [],
+    "bgmUrl": "https://archive.org/download/Bandcamp-63012668/63012668.mp3",
+    "bgmVolume": 0.1
+  },
+  {
+    "id": "ilse_red_08",
+    "accessKeys": [
+      "ilse",
+      "il",
+      "se",
+      "yilse"
+    ],
+    "displayName": "Ilse",
+    "message": "Escribe tu mensaje aquí...",
+    "images": [],
+    "videoUrl": "",
+    "spotifyUrl": "",
+    "spotifyMessage": "",
+    "themeColor": "#d32f2f", // Rojo
+    "easterEggs": [],
+    "bgmUrl": "https://archive.org/download/Bandcamp-63012668/63012668.mp3",
+    "bgmVolume": 0.1
+  },
+  {
+    "id": "lukas_drk_09",
+    "accessKeys": [
+      "lukas",
+      "lucas",
+      "pelucas"
+    ],
+    "displayName": "Lukas",
+    "message": "Escribe tu mensaje aquí...",
+    "images": [],
+    "videoUrl": "",
+    "spotifyUrl": "",
+    "spotifyMessage": "",
+    "themeColor": "#006400", // Verde Oscuro
+    "easterEggs": [],
+    "bgmUrl": "https://archive.org/download/Bandcamp-63012668/63012668.mp3",
+    "bgmVolume": 0.1
+  },
+  {
+    "id": "damian_trq_10",
+    "accessKeys": [
+      "damian",
+      "deimian",
+      "demiados"
+    ],
+    "displayName": "Damian",
+    "message": "Escribe tu mensaje aquí...",
+    "images": [],
+    "videoUrl": "",
+    "spotifyUrl": "",
+    "spotifyMessage": "",
+    "themeColor": "#40e0d0", // Turquesa
+    "easterEggs": [],
+    "bgmUrl": "https://archive.org/download/Bandcamp-63012668/63012668.mp3",
+    "bgmVolume": 0.1
+  },
+  {
+    "id": "zoe_gry_11",
+    "accessKeys": [
+      "zoe",
+      "zoeeee",
+      "zoeee"
+    ],
+    "displayName": "Zoe",
+    "message": "Escribe tu mensaje aquí...",
+    "images": [],
+    "videoUrl": "",
+    "spotifyUrl": "",
+    "spotifyMessage": "",
+    "themeColor": "#808080", // Gris
+    "easterEggs": [],
+    "bgmUrl": "https://archive.org/download/Bandcamp-63012668/63012668.mp3",
+    "bgmVolume": 0.1
+  },
+  {
+    "id": "fam_pine_12",
+    "accessKeys": [
+      "familia",
+      "aeromamis"
+    ],
+    "displayName": "Familia",
+    "message": "Escribe tu mensaje aquí...",
+    "images": [],
+    "videoUrl": "",
+    "spotifyUrl": "",
+    "spotifyMessage": "",
+    "themeColor": "#01796f", // Verde Pino
+    "easterEggs": [],
+    "bgmUrl": "https://archive.org/download/Bandcamp-63012668/63012668.mp3",
+    "bgmVolume": 0.1
   }
 ];
