@@ -4,13 +4,15 @@ import Landing from './components/Landing';
 import Content from './components/Content';
 import Admin from './components/Admin';
 import { Person, ViewState, EasterEgg, SystemConfig } from './types';
-import { ADMIN_CODE, DEFAULT_SYSTEM_CONFIG } from './constants';
-import { getPeople, savePeople, getSystemConfig, saveSystemConfig } from './services/storageService';
+import { ADMIN_CODE, DEFAULT_SYSTEM_CONFIG, INITIAL_PEOPLE } from './constants';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('LANDING');
-  const [people, setPeople] = useState<Person[]>([]);
+  
+  // Initialize state directly from constants (No LocalStorage)
+  const [people, setPeople] = useState<Person[]>(INITIAL_PEOPLE);
   const [systemConfig, setSystemConfig] = useState<SystemConfig>(DEFAULT_SYSTEM_CONFIG);
+  
   const [activePerson, setActivePerson] = useState<Person | null>(null);
   
   const [loginError, setLoginError] = useState(false);
@@ -18,11 +20,6 @@ const App: React.FC = () => {
   
   // New state for transition animation
   const [isTransitioning, setIsTransitioning] = useState(false);
-
-  useEffect(() => {
-    setPeople(getPeople());
-    setSystemConfig(getSystemConfig());
-  }, []);
 
   const handleUnlock = (code: string) => {
     // Reset previous states
@@ -84,12 +81,12 @@ const App: React.FC = () => {
   };
 
   const handleAdminSave = (updatedPeople: Person[]) => {
-    savePeople(updatedPeople);
+    // Only update in-memory state
     setPeople(updatedPeople);
   };
   
   const handleSystemSave = (updatedConfig: SystemConfig) => {
-    saveSystemConfig(updatedConfig);
+    // Only update in-memory state
     setSystemConfig(updatedConfig);
   };
 

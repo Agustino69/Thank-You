@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Person, EasterEgg, EasterEggType, SystemConfig } from '../types';
-import { Plus, Trash2, Save, X, Copy, Check, HelpCircle, Code, Volume2, Gamepad2, Calendar, Layout, Image, Youtube, Music, List, Mic, Settings, HardDrive, Keyboard, Sparkles } from 'lucide-react';
+import { Plus, Trash2, X, Copy, Check, HelpCircle, Code, Volume2, Gamepad2, Calendar, Layout, Image as ImageIcon, Youtube, Music, List, Mic, Settings, HardDrive, Keyboard, Sparkles, Eye } from 'lucide-react';
 import { useFavicon } from '../hooks/useFavicon';
+import Content from './Content';
 
 // Simple ID generator replacement
 const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -31,6 +32,11 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, initialSystemConfig, onSav
   // UI State
   const [hasCopied, setHasCopied] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [isPreviewing, setIsPreviewing] = useState(false); // New Preview State
+  
+  // Input states for adding new content
+  const [newImageInput, setNewImageInput] = useState('');
+  const [newVideoInput, setNewVideoInput] = useState('');
 
   // Set favicon for Admin panel
   useFavicon('#000000');
@@ -46,20 +52,40 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, initialSystemConfig, onSav
       p.id === selectedId ? { ...p, [field]: value } : p
     );
     setPeople(updatedPeople);
+    onSave(updatedPeople); // Update App state immediately (in memory)
   };
 
-  // Video Array Handlers
+  // -------------------------
+  // SMART CONTENT HANDLERS (Images & Videos)
+  // -------------------------
+  
+  // Handle adding images (bulk or single)
+  const handleAddImages = () => {
+    if (!selectedPerson || !newImageInput.trim()) return;
+    
+    // Split by newlines or commas to allow bulk pasting
+    const newUrls = newImageInput
+        .split(/[\n,]+/)
+        .map(url => url.trim())
+        .filter(url => url.length > 0);
+
+    const currentImages = selectedPerson.images || [];
+    handleUpdate('images', [...currentImages, ...newUrls]);
+    setNewImageInput('');
+  };
+
+  const handleRemoveImage = (index: number) => {
+      if (!selectedPerson) return;
+      const currentImages = selectedPerson.images || [];
+      handleUpdate('images', currentImages.filter((_, i) => i !== index));
+  };
+
+  // Handle adding videos
   const handleAddVideo = () => {
-    if (!selectedPerson) return;
-    const currentVideos = selectedPerson.videoUrls || [];
-    handleUpdate('videoUrls', [...currentVideos, '']);
-  };
-
-  const handleUpdateVideo = (index: number, value: string) => {
-    if (!selectedPerson) return;
-    const currentVideos = [...(selectedPerson.videoUrls || [])];
-    currentVideos[index] = value;
-    handleUpdate('videoUrls', currentVideos);
+      if (!selectedPerson || !newVideoInput.trim()) return;
+      const currentVideos = selectedPerson.videoUrls || [];
+      handleUpdate('videoUrls', [...currentVideos, newVideoInput.trim()]);
+      setNewVideoInput('');
   };
 
   const handleDeleteVideo = (index: number) => {
@@ -101,7 +127,9 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, initialSystemConfig, onSav
       themeColor: '#4A463E',
       easterEggs: []
     };
-    setPeople([...people, newPerson]);
+    const newPeople = [...people, newPerson];
+    setPeople(newPeople);
+    onSave(newPeople);
     setSelectedId(newPerson.id);
     setActiveTab('info');
     setMode('PROFILES');
@@ -111,6 +139,7 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, initialSystemConfig, onSav
     if (confirm('¿Estás seguro de eliminar este registro?')) {
       const filtered = people.filter(p => p.id !== id);
       setPeople(filtered);
+      onSave(filtered);
       if (selectedId === id) setSelectedId(filtered[0]?.id || null);
     }
   };
@@ -119,28 +148,59 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, initialSystemConfig, onSav
   // SYSTEM CONFIG HANDLERS
   // -------------------------
   const handleUpdateSystem = (field: keyof SystemConfig, value: string) => {
-      setSystemConfig(prev => ({ ...prev, [field]: value }));
+      const newConfig = { ...systemConfig, [field]: value };
+      setSystemConfig(newConfig);
+      onSaveSystemConfig(newConfig);
   };
 
   // -------------------------
-  // SAVE & EXPORT
+  // EXPORT
   // -------------------------
-  const handleSaveAll = () => {
-    if (mode === 'PROFILES') {
-        onSave(people);
-        alert('Perfiles guardados localmente.');
-    } else {
-        onSaveSystemConfig(systemConfig);
-        alert('Configuración del sistema guardada.');
-    }
-  };
-
   const copyToClipboard = () => {
     navigator.clipboard.writeText(JSON.stringify(people, null, 2));
     setHasCopied(true);
     setTimeout(() => setHasCopied(false), 2000);
   };
 
+  // Helper for Drive Images Preview
+  const getPreviewUrl = (url: string) => {
+      if (url.includes('drive.google.com')) {
+         const matches = url.match(/\/d\/(.+?)(\/|$)/) || url.match(/id=(.+?)(\&|$)/);
+         if (matches && matches[1]) {
+             return `https://drive.google.com/thumbnail?id=${matches[1]}&sz=w200`;
+         }
+      }
+      return url;
+  }
+
+  // -------------------------
+  // PREVIEW RENDER
+  // -------------------------
+  if (isPreviewing && selectedPerson) {
+      return (
+          <div className="fixed inset-0 z-[100] bg-black">
+              {/* Preview Content */}
+              <Content person={selectedPerson} onExit={() => setIsPreviewing(false)} />
+              
+              {/* Preview Banner Overlay */}
+              <div className="fixed top-0 left-0 w-full bg-blue-600 text-white text-xs font-bold uppercase tracking-widest py-2 text-center z-[110] shadow-md pointer-events-none">
+                  Modo Vista Previa
+              </div>
+              
+              {/* Close Preview Button Override (Content's onExit handles logic, but this visual helps) */}
+              <button 
+                onClick={() => setIsPreviewing(false)}
+                className="fixed top-4 right-4 z-[110] bg-black/80 text-white px-4 py-2 rounded-full text-xs uppercase tracking-widest hover:bg-black transition-colors flex items-center gap-2"
+              >
+                  <X size={14} /> Salir de Vista Previa
+              </button>
+          </div>
+      )
+  }
+
+  // -------------------------
+  // MAIN RENDER
+  // -------------------------
   return (
     <div className="fixed inset-0 bg-white z-50 flex flex-col md:flex-row text-sm font-sans text-gray-800">
       
@@ -150,7 +210,7 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, initialSystemConfig, onSav
           <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
              <div className="flex justify-between items-center mb-4 border-b pb-4">
               <h3 className="text-lg font-bold flex items-center gap-2 text-zinc-800">
-                <Code size={20} className="text-blue-600" /> Tutorial: Persistencia
+                <Code size={20} className="text-blue-600" /> Tutorial: Publicar Cambios
               </h3>
               <button onClick={() => setShowTutorial(false)} className="p-1 hover:bg-gray-100 rounded text-gray-500">
                 <X size={20} />
@@ -158,13 +218,14 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, initialSystemConfig, onSav
             </div>
             <div className="prose prose-sm text-gray-600 space-y-4">
               <p className="text-amber-800 bg-amber-50 p-3 rounded border border-amber-200">
-                Los cambios aquí son temporales. Para publicarlos, sigue estos pasos:
+                Los cambios <strong>NO se guardan</strong> al cerrar la página. Debes seguir estos pasos:
               </p>
               <ol className="list-decimal pl-4 space-y-2">
-                <li>Configura todo a tu gusto.</li>
-                <li>Presiona <strong>Copiar JSON</strong> (abajo izquierda).</li>
-                <li>Abre <code>constants.ts</code> en tu código.</li>
-                <li>Reemplaza el contenido de <code>INITIAL_PEOPLE</code> con lo copiado.</li>
+                <li>Edita perfiles y usa "Vista Previa" para verificar.</li>
+                <li>Presiona el botón negro <strong>EXPORTAR JSON</strong> (abajo izquierda).</li>
+                <li>Abre el archivo <code>constants.ts</code> en tu editor de código.</li>
+                <li>Reemplaza el contenido de <code>INITIAL_PEOPLE</code> con lo que copiaste.</li>
+                <li>Sube tu código (Deploy) para que los cambios sean públicos y permanentes.</li>
               </ol>
             </div>
           </div>
@@ -316,7 +377,7 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, initialSystemConfig, onSav
                     onClick={() => setActiveTab('gallery')}
                     className={`flex-1 py-4 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 border-b-2 transition-colors ${activeTab === 'gallery' ? 'border-blue-600 text-blue-600 bg-blue-50/50' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}
                 >
-                    <Image size={16} /> Galería
+                    <ImageIcon size={16} /> Galería
                 </button>
                 <button 
                     onClick={() => setActiveTab('media')}
@@ -394,29 +455,64 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, initialSystemConfig, onSav
                         </div>
                     )}
 
-                    {/* TAB: GALLERY */}
+                    {/* TAB: GALLERY (IMPROVED) */}
                     {activeTab === 'gallery' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                                <label className="block text-xs font-bold uppercase text-gray-500 mb-3 flex justify-between">
-                                    <span>Imágenes (URLs)</span>
-                                    <span className="text-gray-400 font-normal normal-case">Una URL por línea</span>
+                                <label className="block text-xs font-bold uppercase text-gray-500 mb-4 flex justify-between items-center">
+                                    <span>Gestor de Imágenes</span>
+                                    <span className="text-gray-400 font-normal normal-case">{(selectedPerson.images || []).length} imágenes</span>
                                 </label>
-                                <textarea 
-                                    rows={10}
-                                    value={selectedPerson.images.join('\n')}
-                                    onChange={(e) => handleUpdate('images', e.target.value.split('\n').filter(Boolean))}
-                                    placeholder="https://example.com/photo1.jpg&#10;https://drive.google.com/..."
-                                    className="w-full p-3 border border-gray-300 rounded focus:border-blue-500 outline-none font-mono text-xs leading-loose"
-                                />
-                                <div className="mt-4 p-4 bg-blue-50 rounded text-xs text-blue-800 border border-blue-100">
-                                    <p><strong>Tip:</strong> Puedes pegar enlaces de <strong>Google Drive</strong> (carpetas o archivos) y <strong>Google Photos</strong>. El sistema los detectará automáticamente.</p>
+                                
+                                {/* Add Area */}
+                                <div className="flex flex-col gap-2 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                    <div className="flex gap-2">
+                                        <textarea
+                                            value={newImageInput}
+                                            onChange={(e) => setNewImageInput(e.target.value)}
+                                            placeholder="Pega aquí una URL o una lista de enlaces (Google Drive, Photos, etc)..."
+                                            rows={2}
+                                            className="flex-1 p-2 border border-gray-300 rounded text-xs focus:border-blue-500 outline-none resize-none"
+                                        />
+                                        <button 
+                                            onClick={handleAddImages}
+                                            className="bg-blue-600 text-white px-4 rounded text-xs font-bold uppercase tracking-wider hover:bg-blue-700 transition-colors flex flex-col items-center justify-center gap-1"
+                                        >
+                                            <Plus size={16} /> Agregar
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-gray-400">Tip: Puedes pegar varios enlaces separándolos con Enter.</p>
+                                </div>
+
+                                {/* List Area */}
+                                <div className="space-y-2">
+                                    {(selectedPerson.images || []).length === 0 && (
+                                        <div className="text-center py-8 text-gray-400 italic bg-gray-50 rounded border border-dashed border-gray-200">
+                                            No hay imágenes. Agrega algunas arriba.
+                                        </div>
+                                    )}
+                                    {(selectedPerson.images || []).map((img, idx) => (
+                                        <div key={idx} className="flex items-center gap-3 bg-white p-2 border border-gray-100 rounded hover:border-gray-300 transition-colors group">
+                                            <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center overflow-hidden shrink-0">
+                                                <img src={getPreviewUrl(img)} alt="" className="w-full h-full object-cover opacity-80" onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/50?text=IMG' }} />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-xs text-gray-600 truncate font-mono">{img}</div>
+                                            </div>
+                                            <button 
+                                                onClick={() => handleRemoveImage(idx)}
+                                                className="p-2 text-gray-300 hover:text-red-500 transition-colors"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
                                 </div>
                              </div>
                         </div>
                     )}
 
-                    {/* TAB: MEDIA */}
+                    {/* TAB: MEDIA (IMPROVED) */}
                     {activeTab === 'media' && (
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
                             
@@ -426,25 +522,38 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, initialSystemConfig, onSav
                                     <label className="text-xs font-bold uppercase text-gray-500 flex items-center gap-2">
                                         <Youtube size={16} /> Videos (YouTube / Drive)
                                     </label>
-                                    <button onClick={handleAddVideo} className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800 font-semibold">
-                                        <Plus size={14} /> Agregar Video
+                                </div>
+
+                                {/* Add Video Area */}
+                                <div className="flex gap-2 mb-6">
+                                    <input 
+                                        type="text" 
+                                        value={newVideoInput}
+                                        onChange={(e) => setNewVideoInput(e.target.value)}
+                                        placeholder="https://youtube.com/..."
+                                        className="flex-1 p-2 border border-gray-300 rounded focus:border-blue-500 outline-none text-sm"
+                                        onKeyDown={(e) => e.key === 'Enter' && handleAddVideo()}
+                                    />
+                                    <button 
+                                        onClick={handleAddVideo} 
+                                        className="bg-zinc-100 text-zinc-700 hover:bg-zinc-200 hover:text-black px-4 rounded font-bold uppercase text-xs flex items-center gap-2"
+                                    >
+                                        <Plus size={14} /> Agregar
                                     </button>
                                 </div>
-                                <div className="space-y-3">
+
+                                <div className="space-y-2">
                                     {(!selectedPerson.videoUrls || selectedPerson.videoUrls.length === 0) && (
-                                        <p className="text-sm text-gray-400 italic text-center py-4">No hay videos añadidos.</p>
+                                        <p className="text-sm text-gray-400 italic text-center py-4 bg-gray-50 rounded border border-dashed border-gray-200">No hay videos añadidos.</p>
                                     )}
                                     {(selectedPerson.videoUrls || []).map((url, idx) => (
-                                        <div key={idx} className="flex gap-2">
-                                            <input 
-                                                type="text" 
-                                                value={url}
-                                                onChange={(e) => handleUpdateVideo(idx, e.target.value)}
-                                                placeholder="https://youtube.com/..."
-                                                className="flex-1 p-2 border border-gray-300 rounded focus:border-blue-500 outline-none text-sm"
-                                            />
-                                            <button onClick={() => handleDeleteVideo(idx)} className="p-2 text-gray-400 hover:text-red-500">
-                                                <Trash2 size={16} />
+                                        <div key={idx} className="flex items-center gap-3 bg-white p-2 border border-gray-100 rounded hover:border-gray-300 transition-colors">
+                                            <div className="w-8 h-8 flex items-center justify-center bg-red-50 text-red-500 rounded shrink-0">
+                                                <Youtube size={16} />
+                                            </div>
+                                            <div className="flex-1 text-xs font-mono text-gray-600 truncate">{url}</div>
+                                            <button onClick={() => handleDeleteVideo(idx)} className="p-2 text-gray-300 hover:text-red-500">
+                                                <Trash2 size={14} />
                                             </button>
                                         </div>
                                     ))}
@@ -610,25 +719,28 @@ const Admin: React.FC<AdminProps> = ({ initialPeople, initialSystemConfig, onSav
 
         {/* Footer Actions */}
         <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center z-10">
-          <div className="flex gap-2">
+          <div className="flex items-center gap-4">
              {mode === 'PROFILES' && (
-                <button 
-                    onClick={copyToClipboard}
-                    className="flex items-center gap-2 text-gray-600 hover:text-gray-900 px-4 py-2 border border-gray-300 rounded bg-white"
+                 <>
+                    <button 
+                        onClick={copyToClipboard}
+                        className="flex items-center gap-2 bg-zinc-900 text-white px-6 py-2 rounded hover:bg-zinc-700 transition-colors shadow-lg"
+                        >
+                        {hasCopied ? <Check size={16} className="text-green-500"/> : <Copy size={16} />}
+                        <span className="text-xs font-bold uppercase">{hasCopied ? 'Copiado' : 'Exportar JSON'}</span>
+                    </button>
+                    
+                    {/* Preview Button */}
+                    <button 
+                        onClick={() => setIsPreviewing(true)}
+                        disabled={!selectedPerson}
+                        className={`flex items-center gap-2 px-4 py-2 rounded transition-colors text-xs font-bold uppercase tracking-wider ${!selectedPerson ? 'opacity-50 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
                     >
-                    {hasCopied ? <Check size={16} className="text-green-600"/> : <Copy size={16} />}
-                    <span className="text-xs font-bold uppercase">{hasCopied ? 'Copiado' : 'Copiar JSON'}</span>
-                </button>
+                        <Eye size={16} /> Vista Previa
+                    </button>
+                 </>
              )}
           </div>
-
-          <button 
-            onClick={handleSaveAll}
-            className="flex items-center gap-2 bg-zinc-900 text-white px-6 py-2 rounded hover:bg-zinc-700 transition-colors shadow-lg"
-          >
-            <Save size={16} />
-            <span className="text-xs font-bold uppercase">Guardar</span>
-          </button>
         </div>
       </div>
     </div>
